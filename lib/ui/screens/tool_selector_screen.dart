@@ -13,10 +13,11 @@ class ToolSelectorScreen extends StatelessWidget {
     return Consumer<ToolSelectorViewModel>(
       builder: (context, viewModel, _) {
         final tools = viewModel.filteredTools;
+        final activeTool = viewModel.activeTool;
         return LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
-            final crossAxisCount = width >= 1600
+            final toolCols = width >= 1600
                 ? 8
                 : width >= 1200
                 ? 6
@@ -25,19 +26,106 @@ class ToolSelectorScreen extends StatelessWidget {
                 : width >= 600
                 ? 3
                 : 2;
-            return GridView.builder(
+            final opCols = width >= 1600
+                ? 8
+                : width >= 1200
+                ? 6
+                : width >= 900
+                ? 5
+                : width >= 600
+                ? 4
+                : 2;
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(2),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: 1,
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (activeTool.operations.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8.0,
+                        horizontal: 6.0,
+                      ),
+                      child: Text(
+                        'Sub tools · ${activeTool.title}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: opCols,
+                        childAspectRatio: 2.6,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: activeTool.operations.length,
+                      itemBuilder: (context, index) {
+                        final op = activeTool.operations[index];
+                        return _OperationCard(tool: activeTool, opIndex: index);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (tools.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8.0,
+                        horizontal: 6.0,
+                      ),
+                      child: Text(
+                        'All sub tools',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    for (final tool in tools) ...[
+                      if (tool.operations.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 6.0,
+                            horizontal: 6.0,
+                          ),
+                          child: Text(
+                            tool.title,
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ),
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: opCols,
+                                childAspectRatio: 2.6,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
+                          itemCount: tool.operations.length,
+                          itemBuilder: (context, index) =>
+                              _OperationCard(tool: tool, opIndex: index),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  ],
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: toolCols,
+                      childAspectRatio: 1,
+                      crossAxisSpacing: 20,
+                      mainAxisSpacing: 20,
+                    ),
+                    itemCount: tools.length,
+                    itemBuilder: (context, index) {
+                      final tool = tools[index];
+                      return ToolCard(tool: tool);
+                    },
+                  ),
+                ],
               ),
-              itemCount: tools.length,
-              itemBuilder: (context, index) {
-                final tool = tools[index];
-                return ToolCard(tool: tool);
-              },
             );
           },
         );
@@ -125,6 +213,73 @@ class ToolCard extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OperationCard extends StatelessWidget {
+  const _OperationCard({required this.tool, required this.opIndex});
+
+  final DeveloperTool tool;
+  final int opIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final op = tool.operations[opIndex];
+    final color = tool.primaryColor;
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          final vm = Provider.of<ToolSelectorViewModel>(context, listen: false);
+          vm.selectToolById(tool.id);
+          vm.selectOperation(tool.id, opIndex);
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(op.icon, size: 16, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      op.label,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      op.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 18),
+            ],
           ),
         ),
       ),

@@ -9,6 +9,11 @@ import '../../services/log_parser_service.dart';
 import '../../services/timestamp_service.dart';
 import '../../services/url_codec_service.dart';
 import '../../services/uuid_service.dart';
+import '../../services/aes_service.dart';
+import '../../services/rsa_service.dart';
+import '../../services/api_tester_service.dart';
+import '../../services/qr_code_service.dart';
+import '../../services/diff_service.dart';
 
 typedef ToolExecutor = Future<String> Function(String input);
 
@@ -67,6 +72,11 @@ class DeveloperToolCatalog {
     const logParserService = LogParserService();
     const uuidService = UuidService();
     const timestampService = TimestampService();
+    const aesService = AesService();
+    const rsaService = RsaService();
+    const apiTesterService = ApiTesterService();
+    const qrCodeService = QrCodeService();
+    const diffService = DiffService();
 
     return [
       DeveloperTool(
@@ -147,26 +157,103 @@ class DeveloperToolCatalog {
           ToolOperation(
             id: 'aes_encrypt',
             label: 'AES Encrypt',
-            description: 'Encrypt text with a key (coming soon).',
+            description: 'Encrypt text with a key.',
             icon: Icons.lock_outline,
-            executor: (_) async => 'AES encryption coming soon.',
-            isImplemented: false,
+            placeholder: 'Enter text to encrypt and a key like so: {"text": "your text", "key": "your key"}',
+            executor: (input) async {
+              try {
+                final data = json.decode(input) as Map<String, dynamic>;
+                final text = data['text'] as String;
+                final key = data['key'] as String;
+                return await aesService.encrypt(text, key);
+              } catch (e) {
+                throw const FormatException('Invalid input. Expected JSON like: {"text": "your text", "key": "your key"}');
+              }
+            },
+            isImplemented: true,
+          ),
+          ToolOperation(
+            id: 'aes_decrypt',
+            label: 'AES Decrypt',
+            description: 'Decrypt text with a key.',
+            icon: Icons.lock_open_outlined,
+            placeholder: 'Enter text to decrypt and a key like so: {"text": "your text", "key": "your key"}',
+            executor: (input) async {
+              try {
+                final data = json.decode(input) as Map<String, dynamic>;
+                final text = data['text'] as String;
+                final key = data['key'] as String;
+                return await aesService.decrypt(text, key);
+              } catch (e) {
+                throw const FormatException('Invalid input. Expected JSON like: {"text": "your text", "key": "your key"}');
+              }
+            },
+            isImplemented: true,
           ),
           ToolOperation(
             id: 'rsa_encrypt',
-            label: 'RSA Encrypt/Decrypt',
-            description: 'Encrypt/decrypt with RSA keys (coming soon).',
+            label: 'RSA Encrypt',
+            description: 'Encrypt text with a public key.',
             icon: Icons.enhanced_encryption_outlined,
-            executor: (_) async => 'RSA operations coming soon.',
-            isImplemented: false,
+            placeholder: 'Enter text to encrypt and a public key like so: {"text": "your text", "key": "your public key"}',
+            executor: (input) async {
+              try {
+                final data = json.decode(input) as Map<String, dynamic>;
+                final text = data['text'] as String;
+                final key = data['key'] as String;
+                return await rsaService.encrypt(text, key);
+              } catch (e) {
+                throw const FormatException('Invalid input. Expected JSON like: {"text": "your text", "key": "your public key"}');
+              }
+            },
+            isImplemented: true,
           ),
           ToolOperation(
-            id: 'api_tester',
-            label: 'API Tester',
-            description: 'Quick GET/POST tester (coming soon).',
+            id: 'rsa_decrypt',
+            label: 'RSA Decrypt',
+            description: 'Decrypt text with a private key.',
+            icon: Icons.enhanced_encryption_outlined,
+            placeholder: 'Enter text to decrypt and a private key like so: {"text": "your text", "key": "your private key"}',
+            executor: (input) async {
+              try {
+                final data = json.decode(input) as Map<String, dynamic>;
+                final text = data['text'] as String;
+                final key = data['key'] as String;
+                return await rsaService.decrypt(text, key);
+              } catch (e) {
+                throw const FormatException('Invalid input. Expected JSON like: {"text": "your text", "key": "your private key"}');
+              }
+            },
+            isImplemented: true,
+          ),
+          ToolOperation(
+            id: 'api_tester_get',
+            label: 'API Tester - GET',
+            description: 'Quick GET tester.',
             icon: Icons.http_outlined,
-            executor: (_) async => 'API tester coming soon.',
-            isImplemented: false,
+            placeholder: 'Enter a URL to send a GET request to.',
+            executor: (input) async {
+              return await apiTesterService.get(input);
+            },
+            isImplemented: true,
+          ),
+          ToolOperation(
+            id: 'api_tester_post',
+            label: 'API Tester - POST',
+            description: 'Quick POST tester.',
+            icon: Icons.http_outlined,
+            placeholder: 'Enter a URL and a body to send a POST request to. e.g. {\"url\": \"your url\", \"body\": \"your body\"}',
+            executor: (input) async {
+              try {
+                final data = json.decode(input) as Map<String, dynamic>;
+                final url = data['url'] as String;
+                final body = data['body'] as String;
+                return await apiTesterService.post(url, body);
+              } catch (e) {
+                throw const FormatException('Invalid input. Expected JSON like: {\"url\": \"your url\", \"body\": \"your body\"}');
+              }
+            },
+            isImplemented: true,
           ),
         ],
       ),
@@ -362,7 +449,7 @@ class DeveloperToolCatalog {
       DeveloperTool(
         id: 'qr',
         title: 'QR Studio',
-        tagline: 'Generate or scan QR codes (coming soon).',
+        tagline: 'Generate or scan QR codes.',
         primaryColor: const Color(0xFF5E5CE6),
         secondaryColor: const Color(0xFF8E8DFF),
         icon: Icons.qr_code_2_outlined,
@@ -374,8 +461,8 @@ class DeveloperToolCatalog {
             description: 'Turn text into scannable QR codes.',
             icon: Icons.qr_code,
             placeholder: 'Text to convert into QR',
-            executor: (_) async => 'QR generation coming soon.',
-            isImplemented: false,
+            executor: qrCodeService.generate,
+            isImplemented: true,
           ),
           ToolOperation(
             id: 'qr_scan',
@@ -400,10 +487,20 @@ class DeveloperToolCatalog {
             id: 'diff',
             label: 'Diff Viewer',
             description:
-                'Side-by-side diff with inline highlights (coming soon).',
+                'Side-by-side diff with inline highlights.',
             icon: Icons.compare,
-            executor: (_) async => 'Diff viewer coming soon.',
-            isImplemented: false,
+            placeholder: 'Enter two texts to compare, like so: {\"text1\": \"your text1\", \"text2\": \"your text2\"}',
+            executor: (input) async {
+              try {
+                final data = json.decode(input) as Map<String, dynamic>;
+                final text1 = data['text1'] as String;
+                final text2 = data['text2'] as String;
+                return await diffService.diff(text1, text2);
+              } catch (e) {
+                throw const FormatException('Invalid input. Expected JSON like: {\"text1\": \"your text1\", \"text2\": \"your text2\"}');
+              }
+            },
+            isImplemented: true,
           ),
         ],
       ),
