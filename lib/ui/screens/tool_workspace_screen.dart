@@ -222,6 +222,17 @@ class _WorkspaceAppBar extends StatelessWidget {
             ],
           ),
         ),
+        IconButton(
+          tooltip: 'All tools',
+          onPressed: () {
+            context.read<ToolSelectorViewModel>().selectCategory(null);
+            Navigator.of(context).maybePop();
+          },
+          icon: Icon(
+            Icons.grid_view_rounded,
+            color: colorScheme.onPrimary.withValues(alpha: 0.8),
+          ),
+        ),
         Icon(tool.icon, color: colorScheme.onPrimary.withValues(alpha: 0.75)),
       ],
     );
@@ -352,6 +363,10 @@ class _InputField extends StatelessWidget {
       textInputAction: TextInputAction.newline,
       decoration: InputDecoration(
         hintText: hint ?? 'Paste or type your content here...',
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () => controller.clear(),
+        ),
       ),
     );
   }

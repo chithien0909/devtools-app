@@ -30,10 +30,12 @@ class ToolSelectorViewModel extends ChangeNotifier {
   int _selectedIndex = 0;
   String _searchQuery = '';
   String? _selectedCategory;
+  final List<DeveloperTool> _recentTools = [];
 
   int get selectedIndex => _selectedIndex;
   String get searchQuery => _searchQuery;
   String? get selectedCategory => _selectedCategory;
+  List<DeveloperTool> get recentTools => _recentTools;
 
   DeveloperTool get activeTool => tools[_selectedIndex];
 
@@ -76,12 +78,27 @@ class ToolSelectorViewModel extends ChangeNotifier {
     return _sessions.putIfAbsent(toolId, ToolSession.new);
   }
 
+  void addToRecentTools(DeveloperTool tool) {
+    _recentTools.remove(tool);
+    _recentTools.insert(0, tool);
+    if (_recentTools.length > 5) {
+      _recentTools.removeLast();
+    }
+    notifyListeners();
+  }
+
+  void toggleFavorite(DeveloperTool tool) {
+    tool.isFavorite = !tool.isFavorite;
+    notifyListeners();
+  }
+
   void updateSelectedIndex(int index) {
     if (index == _selectedIndex) {
       return;
     }
     _selectedIndex = index;
     sessionFor(activeTool.id);
+    addToRecentTools(activeTool);
     notifyListeners();
   }
 

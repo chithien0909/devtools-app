@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:math';
 
 import '../../services/base64_service.dart';
 import '../../services/hash_service.dart';
@@ -40,6 +42,7 @@ class DeveloperTool {
     required this.icon,
     required this.category,
     required this.operations,
+    this.isFavorite = false,
   });
 
   final String id;
@@ -50,6 +53,7 @@ class DeveloperTool {
   final IconData icon;
   final String category;
   final List<ToolOperation> operations;
+  bool isFavorite;
 }
 
 class DeveloperToolCatalog {
@@ -65,6 +69,107 @@ class DeveloperToolCatalog {
     const timestampService = TimestampService();
 
     return [
+      DeveloperTool(
+        id: 'security_tools',
+        title: 'Security / Dev Tools',
+        tagline: 'JWT, passwords, crypto and API testing.',
+        primaryColor: const Color(0xFF0EA5E9),
+        secondaryColor: const Color(0xFF6366F1),
+        icon: Icons.security,
+        category: 'Security',
+        operations: [
+          ToolOperation(
+            id: 'jwt_decode',
+            label: 'JWT Decoder',
+            description: 'Decode header and payload of a JWT.',
+            icon: Icons.vpn_key_outlined,
+            placeholder: 'Paste a JWT (header.payload.signature)',
+            executor: (input) async {
+              final token = input.trim();
+              if (token.isEmpty) {
+                throw const FormatException('Provide a JWT');
+              }
+              final parts = token.split('.');
+              if (parts.length < 2) {
+                throw const FormatException('Invalid JWT format');
+              }
+              String decodePart(String s) {
+                String normalized = s.replaceAll('-', '+').replaceAll('_', '/');
+                while (normalized.length % 4 != 0) {
+                  normalized += '=';
+                }
+                final bytes = base64.decode(normalized);
+                return utf8.decode(bytes);
+              }
+
+              final header = decodePart(parts[0]);
+              final payload = decodePart(parts[1]);
+              final signature = parts.length > 2 ? parts[2] : '';
+              return 'Header:\n$header\n\nPayload:\n$payload\n\nSignature:\n$signature';
+            },
+          ),
+          ToolOperation(
+            id: 'password_generate',
+            label: 'Password Generator',
+            description: 'Generate secure random passwords.',
+            icon: Icons.password_outlined,
+            placeholder: '{"length":16,"symbols":true,"numbers":true}',
+            executor: (input) async {
+              int length = 16;
+              bool includeSymbols = true;
+              bool includeNumbers = true;
+              try {
+                if (input.trim().isNotEmpty) {
+                  final cfg = json.decode(input) as Map<String, dynamic>;
+                  length = (cfg['length'] as num?)?.toInt() ?? length;
+                  includeSymbols = (cfg['symbols'] as bool?) ?? includeSymbols;
+                  includeNumbers = (cfg['numbers'] as bool?) ?? includeNumbers;
+                }
+              } catch (_) {}
+              const lettersLower = 'abcdefghijklmnopqrstuvwxyz';
+              const lettersUpper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+              const digits = '0123456789';
+              const symbols = '!@#\$%^&*()_-+=[]{};:,.<>?/';
+              String pool = lettersLower + lettersUpper;
+              if (includeNumbers) pool += digits;
+              if (includeSymbols) pool += symbols;
+              if (length < 8) {
+                length = 8;
+              }
+              final rand = Random.secure();
+              final chars = List.generate(
+                length,
+                (_) => pool[rand.nextInt(pool.length)],
+              );
+              return chars.join();
+            },
+          ),
+          ToolOperation(
+            id: 'aes_encrypt',
+            label: 'AES Encrypt',
+            description: 'Encrypt text with a key (coming soon).',
+            icon: Icons.lock_outline,
+            executor: (_) async => 'AES encryption coming soon.',
+            isImplemented: false,
+          ),
+          ToolOperation(
+            id: 'rsa_encrypt',
+            label: 'RSA Encrypt/Decrypt',
+            description: 'Encrypt/decrypt with RSA keys (coming soon).',
+            icon: Icons.enhanced_encryption_outlined,
+            executor: (_) async => 'RSA operations coming soon.',
+            isImplemented: false,
+          ),
+          ToolOperation(
+            id: 'api_tester',
+            label: 'API Tester',
+            description: 'Quick GET/POST tester (coming soon).',
+            icon: Icons.http_outlined,
+            executor: (_) async => 'API tester coming soon.',
+            isImplemented: false,
+          ),
+        ],
+      ),
       DeveloperTool(
         id: 'base64',
         title: 'Base64 Studio',
