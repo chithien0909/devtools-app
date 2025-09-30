@@ -1,0 +1,28 @@
+name: devtools_plus
+description: "DevTools+ — a modern collection of developer productivity utilities."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  liquid_swipe: ^3.1.0
+  crypto: ^3.0.5
+  uuid: ^4.5.1
+  intl: ^0.19.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
