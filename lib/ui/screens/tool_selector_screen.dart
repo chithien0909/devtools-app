@@ -53,8 +53,12 @@ class _ToolSelectorScreenState extends State<ToolSelectorScreen> {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getBool(_prefsShowChipsKey);
     if (saved != null && saved != _showChips) {
-      setState(() {
-        _showChips = saved;
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _showChips = saved;
+        });
       });
     }
   }
@@ -144,10 +148,15 @@ class _ToolSelectorScreenState extends State<ToolSelectorScreen> {
                   forceElevated: _scrolled,
                   titleSpacing: 6,
                   actions: [
-                    IconButton(
-                      tooltip: _showChips ? 'Hide filters' : 'Show filters',
-                      icon: Icon(_showChips ? Icons.tune : Icons.tune_outlined),
-                      onPressed: _toggleShowChips,
+                    Semantics(
+                      button: true,
+                      toggled: _showChips,
+                      label: _showChips ? 'Hide filters' : 'Show filters',
+                      child: IconButton(
+                        tooltip: _showChips ? 'Hide filters' : 'Show filters',
+                        icon: Icon(_showChips ? Icons.tune : Icons.tune_outlined),
+                        onPressed: _toggleShowChips,
+                      ),
                     ),
                   ],
                   title: Material(
@@ -186,42 +195,45 @@ class _ToolSelectorScreenState extends State<ToolSelectorScreen> {
                       ),
                     ),
                   ),
-                  bottom: PreferredSize(
-                    preferredSize:
-                        _showChips ? const Size.fromHeight(64) : const Size.fromHeight(0),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      height: _showChips ? 64 : 0,
-                      curve: Curves.easeOut,
-                      child: (!_showChips)
-                          ? const SizedBox.shrink()
-                          : Padding(
-                              padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: [
-                                    ChoiceChip(
-                                      label: const Text('All'),
-                                      selected: viewModel.selectedCategory == null,
-                                      onSelected: (_) => viewModel.selectCategory(null),
-                                    ),
-                                    ...viewModel.categories.map(
-                                      (c) => ChoiceChip(
-                                        label: Text(c),
-                                        selected: viewModel.selectedCategory == c,
-                                        onSelected: (_) => viewModel.selectCategory(c),
-                                      ),
-                                    ),
-                                  ],
+                  // Chips moved below as a separate sliver to avoid AppBar overflow
+                ),
+                if (_showChips)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            Semantics(
+                              button: true,
+                              selected: viewModel.selectedCategory == null,
+                              label: 'Category: All',
+                              child: ChoiceChip(
+                                label: const Text('All'),
+                                selected: viewModel.selectedCategory == null,
+                                onSelected: (_) => viewModel.selectCategory(null),
+                              ),
+                            ),
+                            ...viewModel.categories.map(
+                              (c) => Semantics(
+                                button: true,
+                                selected: viewModel.selectedCategory == c,
+                                label: 'Category: ' + c,
+                                child: ChoiceChip(
+                                  label: Text(c),
+                                  selected: viewModel.selectedCategory == c,
+                                  onSelected: (_) => viewModel.selectCategory(c),
                                 ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(2),
@@ -302,89 +314,220 @@ class _ToolSelectorScreenState extends State<ToolSelectorScreen> {
   }
 }
 
-class ToolCard extends StatelessWidget {
+class ToolCard extends StatefulWidget {
   const ToolCard({required this.tool, super.key});
 
   final DeveloperTool tool;
 
   @override
+  State<ToolCard> createState() => _ToolCardState();
+}
+
+class _ToolCardState extends State<ToolCard> {
+  bool _hovering = false;
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(0), // Removed margin
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          Provider.of<ToolSelectorViewModel>(
-            context,
-            listen: false,
-          ).addToRecentTools(tool);
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
-          );
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [tool.primaryColor, tool.secondaryColor],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(10.0), // Decreased padding
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Icon(
-                        tool.icon,
-                        size: 18,
-                        color: Colors.white.withOpacity(0.85),
-                      ), // Decreased icon size
-                      IconButton(
-                        icon: Icon(
-                          tool.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: Colors.white,
-                          size: 18,
+    final theme = Theme.of(context);
+    final tool = widget.tool;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: AnimatedScale(
+        scale: _hovering ? 1.02 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        child: FocusableActionDetector(
+          onShowFocusHighlight: (v) => setState(() => _focused = v),
+          child: Card(
+          margin: const EdgeInsets.all(0),
+          elevation: _hovering ? 6 : 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          clipBehavior: Clip.antiAlias,
+          child: Semantics(
+            button: true,
+            label: '${tool.title}. ${tool.tagline}',
+            child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () {
+              Provider.of<ToolSelectorViewModel>(context, listen: false)
+                  .addToRecentTools(tool);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => ToolWorkspaceScreen(tool: tool)),
+              );
+            },
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [tool.primaryColor, tool.secondaryColor],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+                if (_focused)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.9),
+                            width: 2,
+                          ),
                         ),
-                        onPressed: () => Provider.of<ToolSelectorViewModel>(
-                          context,
-                          listen: false,
-                        ).toggleFavorite(tool),
+                      ),
+                    ),
+                  ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.10),
+                          Colors.black.withOpacity(0.18),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Icon(
+                            tool.icon,
+                            size: 22,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Semantics(
+                              button: true,
+                              toggled: tool.isFavorite,
+                              label: tool.isFavorite
+                                  ? 'Remove from favorites'
+                                  : 'Add to favorites',
+                              child: IconButton(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.all(6),
+                              icon: Icon(
+                                tool.isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                                tooltip: tool.isFavorite
+                                    ? 'Remove from favorites'
+                                    : 'Add to favorites',
+                              onPressed: () =>
+                                  Provider.of<ToolSelectorViewModel>(context,
+                                          listen: false)
+                                      .toggleFavorite(tool),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Text(
+                        tool.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        tool.tagline,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: tool.primaryColor.withOpacity(0.22),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.label_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  tool.category,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: tool.primaryColor.withOpacity(0.22),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.widgets_outlined,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${tool.operations.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    tool.title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ), // Adjusted text style
-                  const SizedBox(height: 2),
-                  Text(
-                    tool.tagline,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 12,
-                    ),
-                  ), // Adjusted text style
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }
 
@@ -407,7 +550,10 @@ class _OperationCard extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
+      child: Semantics(
+        button: true,
+        label: '${tool.title} - ${op.label}. ${op.description}',
+        child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () {
           final vm = Provider.of<ToolSelectorViewModel>(context, listen: false);
@@ -418,7 +564,7 @@ class _OperationCard extends StatelessWidget {
           );
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
               Container(
@@ -438,6 +584,8 @@ class _OperationCard extends StatelessWidget {
                   children: [
                     Text(
                       op.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -455,6 +603,7 @@ class _OperationCard extends StatelessWidget {
               const Icon(Icons.chevron_right, size: 18),
             ],
           ),
+        ),
         ),
       ),
     );

@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:reorderables/reorderables.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../data/models/developer_tool.dart';
 import '../../viewmodels/tool_selector_view_model.dart';
+import '../../services/pdf_service.dart';
+import '../../services/image_processor_service.dart';
+import '../../services/data_tools_service.dart';
+
+const DataToolsService _dataToolsService = DataToolsService();
 
 class ToolWorkspaceScreen extends StatelessWidget {
   const ToolWorkspaceScreen({super.key, required this.tool});
@@ -17,10 +33,12 @@ class ToolWorkspaceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ToolSelectorViewModel>(
       builder: (context, viewModel, _) {
-        final colorScheme = Theme.of(context).colorScheme;
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
         final session = viewModel.sessionFor(tool.id);
         final operation = tool.operations[session.activeOperationIndex];
         final isQrScan = operation.id == 'qr_scan';
+        final isQrGenerate = operation.id == 'qr_generate';
         final canRun = operation.isImplemented && !session.isProcessing;
 
         return Scaffold(
@@ -77,6 +95,18 @@ class ToolWorkspaceScreen extends StatelessWidget {
                             const SizedBox(height: 16),
                             if (operation.id == 'api_tester')
                               const _ApiTesterPanel()
+                            else if (operation.id == 'image_to_pdf')
+                              _ImageToPdfPanel(
+                                toolId: tool.id,
+                                viewModel: viewModel,
+                                session: session,
+                              )
+                            else if (operation.id == 'image_compressor')
+                              _ImageCompressorPanel(
+                                toolId: tool.id,
+                                viewModel: viewModel,
+                                session: session,
+                              )
                             else
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,6 +200,58 @@ class ToolWorkspaceScreen extends StatelessWidget {
                                   const SizedBox(height: 12),
                                   _OutputPanel(
                                     content: session.output,
+                                    preview:
+                                        isQrGenerate &&
+                                            session.output.isNotEmpty
+                                        ? Center(
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    theme.colorScheme.surface,
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: theme
+                                                        .colorScheme
+                                                        .shadow
+                                                        .withValues(
+                                                          alpha: 0.08,
+                                                        ),
+                                                    blurRadius: 18,
+                                                    offset: const Offset(0, 10),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  24,
+                                                ),
+                                                child: QrImageView(
+                                                  data: session.output,
+                                                  version: QrVersions.auto,
+                                                  size: 220,
+                                                  backgroundColor: Colors.white,
+                                                  eyeStyle: QrEyeStyle(
+                                                    eyeShape: QrEyeShape.circle,
+                                                    color: theme
+                                                        .colorScheme
+                                                        .primary,
+                                                  ),
+                                                  dataModuleStyle:
+                                                      QrDataModuleStyle(
+                                                        dataModuleShape:
+                                                            QrDataModuleShape
+                                                                .circle,
+                                                        color: theme
+                                                            .colorScheme
+                                                            .onPrimaryContainer,
+                                                      ),
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                        : null,
                                     onCopy: session.output.isEmpty
                                         ? null
                                         : () async {
@@ -207,6 +289,639 @@ class ToolWorkspaceScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ImageCompressorPanel extends StatefulWidget {
+  const _ImageCompressorPanel({
+    required this.toolId,
+    required this.viewModel,
+    required this.session,
+  });
+
+  final String toolId;
+  final ToolSelectorViewModel viewModel;
+  final ToolSession session;
+
+  @override
+  State<_ImageCompressorPanel> createState() => _ImageCompressorPanelState();
+}
+
+class _ProcessedPreview {
+  _ProcessedPreview({required this.file});
+
+  final ProcessedImageFile file;
+}
+
+class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
+  final ImageProcessorService _imageService = const ImageProcessorService();
+  final List<_ImageItem> _images = [];
+  final List<_ProcessedPreview> _processed = [];
+  ProcessedPdfFile? _pdfFile;
+  Uint8List? _archiveBytes;
+
+  double _quality = 80;
+  ResizeMode _resizeMode = ResizeMode.none;
+  double _resizePercentage = 100;
+  final TextEditingController _widthController = TextEditingController();
+  final TextEditingController _heightController = TextEditingController();
+  bool _maintainAspect = true;
+  ImageOutputFormat _outputFormat = ImageOutputFormat.jpeg;
+  bool _keepMetadata = true;
+  bool _isProcessing = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _widthController.dispose();
+    _heightController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.image,
+        withData: true,
+      );
+      if (result == null) {
+        return;
+      }
+      final additions = <_ImageItem>[];
+      for (final file in result.files) {
+        final item = await _createImageItem(file);
+        if (item != null) {
+          additions.add(item);
+        }
+      }
+      if (additions.isEmpty) {
+        _setError('Unable to read the selected images.');
+        return;
+      }
+      setState(() {
+        _errorMessage = null;
+        _processed.clear();
+        _pdfFile = null;
+        _archiveBytes = null;
+        _images.addAll(additions);
+      });
+      widget.viewModel.setSessionState(widget.toolId, clearError: true);
+    } catch (error) {
+      _setError(error.toString());
+    }
+  }
+
+  Future<void> _loadSampleImages() async {
+    const colors = [
+      Color(0xFF5E35B1),
+      Color(0xFF00897B),
+      Color(0xFFD81B60),
+      Color(0xFFFF7043),
+    ];
+    final samples = <_ImageItem>[];
+    for (var i = 0; i < colors.length; i++) {
+      samples.add(await _createSampleImage('Sample ${i + 1}', colors[i]));
+    }
+    setState(() {
+      _errorMessage = null;
+      _processed.clear();
+      _pdfFile = null;
+      _archiveBytes = null;
+      _images
+        ..clear()
+        ..addAll(samples);
+    });
+    widget.viewModel.setSessionState(widget.toolId, clearError: true);
+  }
+
+  Future<_ImageItem?> _createImageItem(PlatformFile file) async {
+    try {
+      Uint8List? data = file.bytes;
+      if (data == null) {
+        final path = file.path;
+        if (path == null) {
+          return null;
+        }
+        data = await File(path).readAsBytes();
+      }
+      final codec = await ui.instantiateImageCodec(data);
+      final frame = await codec.getNextFrame();
+      return _ImageItem(
+        bytes: data,
+        name: file.name,
+        width: frame.image.width,
+        height: frame.image.height,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<_ImageItem> _createSampleImage(String label, Color color) async {
+    const width = 960;
+    const height = 640;
+    final recorder = ui.PictureRecorder();
+    final rect = ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble());
+    final canvas = ui.Canvas(recorder, rect);
+    canvas.drawRect(rect, Paint()..color = color);
+    final paragraphBuilder = ui.ParagraphBuilder(
+      ui.ParagraphStyle(
+        textAlign: ui.TextAlign.center,
+        fontSize: 54,
+        fontFamily: 'Roboto',
+      ),
+    )
+      ..pushStyle(ui.TextStyle(color: const ui.Color(0xFFFFFFFF)))
+      ..addText(label);
+    final paragraph = paragraphBuilder.build()
+      ..layout(ui.ParagraphConstraints(width: width.toDouble()));
+    canvas.drawParagraph(
+      paragraph,
+      ui.Offset(
+        (width - paragraph.longestLine) / 2,
+        (height - paragraph.height) / 2,
+      ),
+    );
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(width, height);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return _ImageItem(
+      bytes: bytes!.buffer.asUint8List(),
+      name: '${label.toLowerCase().replaceAll(' ', '_')}.png',
+      width: image.width,
+      height: image.height,
+    );
+  }
+
+  Future<void> _processImages() async {
+    if (_images.isEmpty) {
+      _setError('Add images to compress first.');
+      return;
+    }
+
+    setState(() {
+      _isProcessing = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final inputs = _images
+          .map(
+            (image) => ImageProcessingInput(
+              bytes: image.bytes,
+              originalName: image.name,
+            ),
+          )
+          .toList();
+
+      final options = ImageProcessingOptions(
+        outputFormat: _outputFormat,
+        resizeMode: _resizeMode,
+        quality: _quality.round(),
+        resizePercentage: _resizePercentage,
+        targetWidth: int.tryParse(_widthController.text.trim()),
+        targetHeight: int.tryParse(_heightController.text.trim()),
+        maintainAspectRatio: _maintainAspect,
+        keepMetadata: _keepMetadata,
+      );
+
+      final result = await _imageService.process(inputs, options);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isProcessing = false;
+        _processed
+          ..clear()
+          ..addAll(
+            result.files.map((file) => _ProcessedPreview(file: file)),
+          );
+        _pdfFile = result.pdfFile;
+        _archiveBytes = result.archiveBytes;
+      });
+
+      final summary = _pdfFile != null
+          ? 'Generated PDF with ${_images.length} page(s).'
+          : 'Processed ${_processed.length} image(s).';
+      widget.viewModel.setSessionState(
+        widget.toolId,
+        output: summary,
+        clearError: true,
+      );
+    } on ImageProcessingException catch (error) {
+      _setError(error.message);
+    } catch (error) {
+      _setError(error.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  Future<void> _saveAll() async {
+    if (_processed.isEmpty && _pdfFile == null) {
+      _setError('Process the images before saving.');
+      return;
+    }
+    final directory = await getApplicationDocumentsDirectory();
+    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+    final targetDir = Directory(p.join(directory.path, 'image_compressor_$timestamp'));
+    await targetDir.create(recursive: true);
+
+    if (_pdfFile != null) {
+      final pdfPath = p.join(targetDir.path, _pdfFile!.fileName);
+      await File(pdfPath).writeAsBytes(_pdfFile!.bytes, flush: true);
+    }
+
+    for (final item in _processed) {
+      final path = p.join(targetDir.path, item.file.fileName);
+      await File(path).writeAsBytes(item.file.bytes, flush: true);
+    }
+
+    if (_archiveBytes != null) {
+      final archivePath = p.join(targetDir.path, 'batch_download.zip');
+      await File(archivePath).writeAsBytes(_archiveBytes!, flush: true);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    widget.viewModel.setSessionState(
+      widget.toolId,
+      output: 'Saved to ${targetDir.path}',
+      clearError: true,
+    );
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('Files saved to ${targetDir.path}')),
+      );
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+    });
+  }
+
+  void _reorderImages(int oldIndex, int newIndex) {
+    setState(() {
+      final item = _images.removeAt(oldIndex);
+      _images.insert(newIndex, item);
+    });
+  }
+
+  void _setError(String message) {
+    setState(() => _errorMessage = message);
+    widget.viewModel.setSessionState(
+      widget.toolId,
+      error: message,
+      output: '',
+      clearError: false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final isCompact = maxWidth < 900;
+        final tileWidth = isCompact ? (maxWidth - 24) / 2 : 180.0;
+        final previewHeight = isCompact ? 320.0 : 440.0;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                FilledButton.icon(
+                  onPressed: _pickImages,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Select images'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _loadSampleImages,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Load sample images'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _images.isEmpty
+                ? Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: Text(
+                      'Selected images will appear here. Add some to get started.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  )
+                : ReorderableWrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    onReorder: _reorderImages,
+                    needsLongPressDraggable: false,
+                    children: [
+                      for (var i = 0; i < _images.length; i++)
+                        SizedBox(
+                          width: tileWidth,
+                          child: _ImagePreviewTile(
+                            key: ValueKey('${_images[i].name}-$i'),
+                            image: _images[i],
+                            width: tileWidth,
+                            onRemove: () => _removeImage(i),
+                          ),
+                        ),
+                    ],
+                  ),
+            const SizedBox(height: 24),
+            _buildControls(theme, isCompact),
+            const SizedBox(height: 16),
+            Flex(
+              direction: isCompact ? Axis.vertical : Axis.horizontal,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FilledButton.icon(
+                  onPressed: _isProcessing ? null : _processImages,
+                  icon: _isProcessing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.play_arrow_rounded),
+                  label: Text(_isProcessing ? 'Processing...' : 'Process images'),
+                ),
+                SizedBox(width: isCompact ? 0 : 12, height: isCompact ? 12 : 0),
+                FilledButton.tonalIcon(
+                  onPressed: _isProcessing ? null : _saveAll,
+                  icon: const Icon(Icons.download_outlined),
+                  label: const Text('Save all'),
+                ),
+                if (_archiveBytes != null) ...[
+                  SizedBox(width: isCompact ? 0 : 12, height: isCompact ? 12 : 0),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final tempDir = await getTemporaryDirectory();
+                      final tempPath = p.join(tempDir.path, 'image_batch_${DateTime.now().millisecondsSinceEpoch}.zip');
+                      await File(tempPath).writeAsBytes(_archiveBytes!, flush: true);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                          SnackBar(content: Text('ZIP saved to $tempPath')),
+                        );
+                    },
+                    icon: const Icon(Icons.archive_outlined),
+                    label: const Text('Save ZIP'),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_errorMessage != null)
+              _ErrorBanner(message: _errorMessage!)
+            else if (_pdfFile != null) ...[
+              _InfoBanner(message: 'PDF ready (${_images.length} page(s)).'),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: previewHeight,
+                child: PdfPreview(
+                  build: (format) async => _pdfFile!.bytes,
+                  allowPrinting: true,
+                  allowSharing: true,
+                  canChangePageFormat: false,
+                  pdfFileName: _pdfFile!.fileName,
+                ),
+              ),
+            ] else if (_processed.isNotEmpty) ...[
+              Text('Preview (${_processed.length})', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _processed
+                    .map(
+                      (item) => _ProcessedPreviewTile(
+                        preview: item,
+                        width: tileWidth,
+                        height: previewHeight / 2,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildControls(ThemeData theme, bool isCompact) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Compression & format', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            SizedBox(
+              width: isCompact ? double.infinity : 280,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Quality', style: theme.textTheme.labelLarge),
+                      Text('${_quality.round()}%', style: theme.textTheme.bodySmall),
+                    ],
+                  ),
+                  Slider(
+                    value: _quality,
+                    min: 1,
+                    max: 100,
+                    divisions: 99,
+                    label: '${_quality.round()}%',
+                    onChanged: (value) => setState(() => _quality = value),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: isCompact ? double.infinity : 260,
+              child: SegmentedButton<ResizeMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: ResizeMode.none,
+                    label: Text('Original size'),
+                    icon: Icon(Icons.fullscreen_exit),
+                  ),
+                  ButtonSegment(
+                    value: ResizeMode.percentage,
+                    label: Text('Percentage'),
+                    icon: Icon(Icons.percent),
+                  ),
+                  ButtonSegment(
+                    value: ResizeMode.custom,
+                    label: Text('Custom'),
+                    icon: Icon(Icons.photo_size_select_large),
+                  ),
+                ],
+                selected: {_resizeMode},
+                onSelectionChanged: (selection) => setState(() => _resizeMode = selection.first),
+              ),
+            ),
+            if (_resizeMode == ResizeMode.percentage)
+              SizedBox(
+                width: isCompact ? double.infinity : 220,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Scale', style: theme.textTheme.labelLarge),
+                        Text('${_resizePercentage.round()}%', style: theme.textTheme.bodySmall),
+                      ],
+                    ),
+                    Slider(
+                      value: _resizePercentage,
+                      min: 1,
+                      max: 400,
+                      divisions: 399,
+                      label: '${_resizePercentage.round()}%',
+                      onChanged: (value) => setState(() => _resizePercentage = value),
+                    ),
+                  ],
+                ),
+              ),
+            if (_resizeMode == ResizeMode.custom)
+              SizedBox(
+                width: isCompact ? double.infinity : 320,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _widthController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                        decoration: const InputDecoration(labelText: 'Width (px)'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _heightController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                        decoration: const InputDecoration(labelText: 'Height (px)'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            SwitchListTile.adaptive(
+              value: _maintainAspect,
+              onChanged: (value) => setState(() => _maintainAspect = value),
+              title: const Text('Maintain aspect ratio'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            SizedBox(
+              width: isCompact ? double.infinity : 240,
+              child: DropdownMenu<ImageOutputFormat>(
+                label: const Text('Output format'),
+                initialSelection: _outputFormat,
+                dropdownMenuEntries: const [
+                  DropdownMenuEntry(value: ImageOutputFormat.jpeg, label: 'JPEG'),
+                  DropdownMenuEntry(value: ImageOutputFormat.png, label: 'PNG'),
+                  DropdownMenuEntry(value: ImageOutputFormat.webp, label: 'WebP'),
+                  DropdownMenuEntry(value: ImageOutputFormat.pdf, label: 'PDF (multi-page)'),
+                ],
+                onSelected: (value) => setState(() => _outputFormat = value ?? ImageOutputFormat.jpeg),
+              ),
+            ),
+            SwitchListTile.adaptive(
+              value: _keepMetadata,
+              onChanged: (value) => setState(() => _keepMetadata = value),
+              title: const Text('Keep EXIF metadata'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ProcessedPreviewTile extends StatelessWidget {
+  const _ProcessedPreviewTile({
+    required this.preview,
+    required this.width,
+    required this.height,
+  });
+
+  final _ProcessedPreview preview;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: width,
+      constraints: BoxConstraints(maxWidth: width, minHeight: height / 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          AspectRatio(
+            aspectRatio: 4 / 3,
+            child: Image.memory(preview.file.bytes, fit: BoxFit.cover),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  preview.file.fileName,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${preview.file.width}×${preview.file.height}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -399,14 +1114,21 @@ class _InputField extends StatelessWidget {
 }
 
 class _OutputPanel extends StatelessWidget {
-  const _OutputPanel({required this.content, required this.onCopy});
+  const _OutputPanel({
+    required this.content,
+    required this.onCopy,
+    this.preview,
+  });
 
   final String content;
   final VoidCallback? onCopy;
+  final Widget? preview;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasContent = content.isNotEmpty;
+    final hasPreview = preview != null;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
@@ -441,20 +1163,26 @@ class _OutputPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          if (content.isEmpty)
+          if (!hasContent && !hasPreview)
             Text(
               'Run the tool to see the transformation here.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             )
-          else
-            SelectableText(
-              content,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontFamily: 'Roboto Mono',
+          else ...[
+            if (hasPreview) ...[
+              preview!,
+              if (hasContent) const SizedBox(height: 16),
+            ],
+            if (hasContent)
+              SelectableText(
+                content,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontFamily: 'Roboto Mono',
+                ),
               ),
-            ),
+          ],
         ],
       ),
     );
@@ -529,6 +1257,755 @@ class _ApiResponseData {
   final dynamic parsedJson;
 
   bool get isJson => parsedJson != null;
+}
+
+class _ImageItem {
+  _ImageItem({
+    required this.bytes,
+    required this.name,
+    required this.width,
+    required this.height,
+  });
+
+  final Uint8List bytes;
+  final String name;
+  final int width;
+  final int height;
+}
+
+enum _PageSizeOption { a4, letter, custom }
+
+class _ImageToPdfPanel extends StatefulWidget {
+  const _ImageToPdfPanel({
+    required this.toolId,
+    required this.viewModel,
+    required this.session,
+  });
+
+  final String toolId;
+  final ToolSelectorViewModel viewModel;
+  final ToolSession session;
+
+  @override
+  State<_ImageToPdfPanel> createState() => _ImageToPdfPanelState();
+}
+
+class _ImageToPdfPanelState extends State<_ImageToPdfPanel> {
+  final PdfService _pdfService = const PdfService();
+  final List<_ImageItem> _images = [];
+  final TextEditingController _minDimensionController = TextEditingController(
+    text: '100',
+  );
+  final TextEditingController _fileNameController = TextEditingController(
+    text: 'output.pdf',
+  );
+  final TextEditingController _watermarkController = TextEditingController();
+  final TextEditingController _headerController = TextEditingController();
+  final TextEditingController _footerController = TextEditingController();
+
+  PdfLayoutMode _layout = PdfLayoutMode.vertical;
+  PdfScalingMode _scaling = PdfScalingMode.fitToPage;
+  _PageSizeOption _pageSize = _PageSizeOption.a4;
+  double _customWidthMm = 210;
+  double _customHeightMm = 297;
+  double _marginMm = 15;
+  bool _skipTiny = true;
+  Uint8List? _pdfBytes;
+  String? _savedPath;
+  bool _isGenerating = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _minDimensionController.dispose();
+    _fileNameController.dispose();
+    _watermarkController.dispose();
+    _headerController.dispose();
+    _footerController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.image,
+        withData: true,
+      );
+      if (result == null) {
+        return;
+      }
+      final additions = <_ImageItem>[];
+      for (final file in result.files) {
+        final item = await _createImageItem(file);
+        if (item != null) {
+          additions.add(item);
+        }
+      }
+      if (additions.isEmpty) {
+        _setError('No readable images were selected.');
+        return;
+      }
+      setState(() {
+        _errorMessage = null;
+        _images.addAll(additions);
+      });
+      widget.viewModel.setSessionState(widget.toolId, clearError: true);
+    } catch (error) {
+      _setError(error.toString());
+    }
+  }
+
+  Future<void> _loadSampleImages() async {
+    const colors = [
+      Color(0xFFE63946),
+      Color(0xFF457B9D),
+      Color(0xFF2A9D8F),
+      Color(0xFFF4A261),
+    ];
+    final samples = <_ImageItem>[];
+    for (var i = 0; i < colors.length; i++) {
+      samples.add(await _createSampleImage('Sample ${i + 1}', colors[i]));
+    }
+    setState(() {
+      _errorMessage = null;
+      _images
+        ..clear()
+        ..addAll(samples);
+    });
+    widget.viewModel.setSessionState(widget.toolId, clearError: true);
+  }
+
+  Future<_ImageItem?> _createImageItem(PlatformFile file) async {
+    try {
+      Uint8List? data = file.bytes;
+      if (data == null) {
+        final path = file.path;
+        if (path == null) {
+          return null;
+        }
+        data = await File(path).readAsBytes();
+      }
+      final dimensions = await _decodeSize(data);
+      return _ImageItem(
+        bytes: data,
+        name: file.name,
+        width: dimensions.width.round(),
+        height: dimensions.height.round(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<_ImageItem> _createSampleImage(String label, Color color) async {
+    const width = 800;
+    const height = 600;
+    final recorder = ui.PictureRecorder();
+    final canvasRect = ui.Rect.fromLTWH(
+      0,
+      0,
+      width.toDouble(),
+      height.toDouble(),
+    );
+    final canvas = ui.Canvas(recorder, canvasRect);
+    final paint = Paint()..color = color;
+    canvas.drawRect(canvasRect, paint);
+    final paragraphBuilder =
+        ui.ParagraphBuilder(
+            ui.ParagraphStyle(
+              textAlign: ui.TextAlign.center,
+              fontSize: 56,
+              fontFamily: 'Roboto',
+            ),
+          )
+          ..pushStyle(ui.TextStyle(color: const ui.Color(0xFFFFFFFF)))
+          ..addText(label);
+    final paragraph = paragraphBuilder.build()
+      ..layout(ui.ParagraphConstraints(width: width.toDouble()));
+    canvas.drawParagraph(
+      paragraph,
+      ui.Offset(
+        (width - paragraph.longestLine) / 2,
+        (height - paragraph.height) / 2,
+      ),
+    );
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(width, height);
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    final bytes = byteData!.buffer.asUint8List();
+    return _ImageItem(
+      bytes: bytes,
+      name: '${label.toLowerCase().replaceAll(' ', '_')}.png',
+      width: img.width,
+      height: img.height,
+    );
+  }
+
+  Future<ui.Size> _decodeSize(Uint8List bytes) async {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    return ui.Size(image.width.toDouble(), image.height.toDouble());
+  }
+
+  Future<void> _generatePdf() async {
+    final threshold = double.tryParse(_minDimensionController.text) ?? 100;
+    final filtered = _skipTiny
+        ? _images
+              .where(
+                (image) =>
+                    image.width >= threshold && image.height >= threshold,
+              )
+              .toList()
+        : List<_ImageItem>.from(_images);
+
+    if (filtered.isEmpty) {
+      _setError('No images satisfy the minimum size requirement.');
+      return;
+    }
+
+    final fileName = _fileNameController.text.trim().isEmpty
+        ? 'output.pdf'
+        : _fileNameController.text.trim();
+
+    setState(() {
+      _isGenerating = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final assets = filtered
+          .map(
+            (image) => PdfImageAsset(
+              bytes: image.bytes,
+              name: image.name,
+              width: image.width,
+              height: image.height,
+            ),
+          )
+          .toList();
+
+      final result = await _pdfService.generatePdf(
+        images: assets,
+        layout: _layout,
+        pageFormat: _resolvePageFormat(),
+        scaling: _scaling,
+        margin: _mmToPt(_marginMm),
+        watermark: _watermarkController.text.trim().isEmpty
+            ? null
+            : _watermarkController.text.trim(),
+        headerText: _headerController.text.trim().isEmpty
+            ? null
+            : _headerController.text.trim(),
+        footerText: _footerController.text.trim().isEmpty
+            ? null
+            : _footerController.text.trim(),
+        fileName: fileName,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isGenerating = false;
+        _pdfBytes = result.bytes;
+        _savedPath = result.filePath;
+      });
+
+      widget.viewModel.setSessionState(
+        widget.toolId,
+        output: 'PDF saved to ${result.filePath}',
+        clearError: true,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isGenerating = false;
+      });
+      final message = error is PdfException ? error.message : error.toString();
+      _setError(message);
+    }
+  }
+
+  PdfPageFormat _resolvePageFormat() {
+    switch (_pageSize) {
+      case _PageSizeOption.a4:
+        return PdfPageFormat.a4;
+      case _PageSizeOption.letter:
+        return PdfPageFormat.letter;
+      case _PageSizeOption.custom:
+        final double widthMm = _customWidthMm <= 0 ? 210.0 : _customWidthMm;
+        final double heightMm = _customHeightMm <= 0 ? 297.0 : _customHeightMm;
+        return PdfPageFormat(_mmToPt(widthMm), _mmToPt(heightMm));
+    }
+  }
+
+  double _mmToPt(double value) => (value * PdfPageFormat.mm).toDouble();
+
+  void _setError(String message) {
+    setState(() => _errorMessage = message);
+    widget.viewModel.setSessionState(
+      widget.toolId,
+      error: message,
+      output: '',
+      clearError: false,
+    );
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+    });
+  }
+
+  void _reorderImages(int oldIndex, int newIndex) {
+    setState(() {
+      final item = _images.removeAt(oldIndex);
+      _images.insert(newIndex, item);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final hasPdf = _pdfBytes != null;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final isCompact = maxWidth < 840;
+        final isVeryCompact = maxWidth < 520;
+        final fieldWidth = isCompact ? maxWidth : 240.0;
+        final tileWidth = isVeryCompact
+            ? (maxWidth - 12).clamp(120.0, 220.0)
+            : (isCompact ? (maxWidth - 36) / 2 : 160.0);
+        final previewHeight = isVeryCompact
+            ? 320.0
+            : (isCompact ? 380.0 : 460.0);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                FilledButton.icon(
+                  onPressed: _pickImages,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Select images'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _loadSampleImages,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Load sample images'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _images.isEmpty
+                ? Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: Text(
+                      'Selected images will appear here. Add some to get started.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  )
+                : ReorderableWrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    maxMainAxisCount: isVeryCompact ? 1 : null,
+                    onReorder: _reorderImages,
+                    needsLongPressDraggable: false,
+                    children: [
+                      for (var i = 0; i < _images.length; i++)
+                        SizedBox(
+                          width: tileWidth,
+                          child: _ImagePreviewTile(
+                            key: ValueKey('${_images[i].name}-$i'),
+                            image: _images[i],
+                            width: tileWidth,
+                            onRemove: () => _removeImage(i),
+                          ),
+                        ),
+                    ],
+                  ),
+            const SizedBox(height: 24),
+            _buildOptionsGrid(theme, fieldWidth, isCompact),
+            const SizedBox(height: 16),
+            _buildAdvancedOptions(theme, fieldWidth, isCompact),
+            const SizedBox(height: 16),
+            Flex(
+              direction: isVeryCompact ? Axis.vertical : Axis.horizontal,
+              crossAxisAlignment:
+                  isVeryCompact ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
+              children: [
+                FilledButton.icon(
+                  onPressed: _isGenerating ? null : _generatePdf,
+                  icon: _isGenerating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.picture_as_pdf_outlined),
+                  label: Text(_isGenerating ? 'Generating...' : 'Generate PDF'),
+                ),
+                if (hasPdf) ...[
+                  SizedBox(width: isVeryCompact ? 0 : 12, height: 12),
+                  Align(
+                    alignment: isVeryCompact
+                        ? Alignment.centerRight
+                        : Alignment.center,
+                    child: IconButton.filledTonal(
+                      tooltip: 'Share PDF',
+                      onPressed: () => Printing.sharePdf(
+                        bytes: _pdfBytes!,
+                        filename: _fileNameController.text.trim().isEmpty
+                            ? 'output.pdf'
+                            : _fileNameController.text.trim(),
+                      ),
+                      icon: const Icon(Icons.ios_share_outlined),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_errorMessage != null)
+              _ErrorBanner(message: _errorMessage!)
+            else if (hasPdf) ...[
+              _InfoBanner(
+                message: 'Saved to ${_savedPath ?? 'unknown location'}',
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: previewHeight,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double height = constraints.maxHeight.isFinite
+                    ? constraints.maxHeight
+                    : 420.0;
+                final double width = constraints.maxWidth.isFinite
+                    ? constraints.maxWidth
+                    : double.infinity;
+                return SizedBox(
+                  height: height,
+                  width: width,
+                  child: PdfPreview(
+                    build: (format) async => _pdfBytes!,
+                    allowPrinting: true,
+                    allowSharing: true,
+                    canChangePageFormat: false,
+                    pdfFileName: _fileNameController.text.trim().isEmpty
+                        ? 'output.pdf'
+                        : _fileNameController.text.trim(),
+                  ),
+                );
+              },
+            ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOptionsGrid(ThemeData theme, double fieldWidth, bool isCompact) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Layout & filtering', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            SizedBox(
+              width: fieldWidth,
+              child: SegmentedButton<PdfLayoutMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: PdfLayoutMode.vertical,
+                    label: Text('Vertical'),
+                    icon: Icon(Icons.view_agenda_outlined),
+                  ),
+                  ButtonSegment(
+                    value: PdfLayoutMode.horizontalGrid,
+                    label: Text('Horizontal'),
+                    icon: Icon(Icons.grid_view_outlined),
+                  ),
+                ],
+                selected: {_layout},
+                onSelectionChanged: (selection) =>
+                    setState(() => _layout = selection.first),
+              ),
+            ),
+            SizedBox(
+              width: isCompact ? fieldWidth : 260,
+              child: SegmentedButton<PdfScalingMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: PdfScalingMode.fitToPage,
+                    label: Text('Fit to page'),
+                    icon: Icon(Icons.fullscreen),
+                  ),
+                  ButtonSegment(
+                    value: PdfScalingMode.originalSize,
+                    label: Text('Original'),
+                    icon: Icon(Icons.photo_size_select_large),
+                  ),
+                  ButtonSegment(
+                    value: PdfScalingMode.stretch,
+                    label: Text('Stretch'),
+                    icon: Icon(Icons.aspect_ratio),
+                  ),
+                ],
+                selected: {_scaling},
+                onSelectionChanged: (selection) =>
+                    setState(() => _scaling = selection.first),
+              ),
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: DropdownMenu<_PageSizeOption>(
+                label: const Text('Page size'),
+                initialSelection: _pageSize,
+                dropdownMenuEntries: const [
+                  DropdownMenuEntry(
+                    value: _PageSizeOption.a4,
+                    label: 'A4 (210 × 297 mm)',
+                  ),
+                  DropdownMenuEntry(
+                    value: _PageSizeOption.letter,
+                    label: 'Letter (8.5 × 11 in)',
+                  ),
+                  DropdownMenuEntry(
+                    value: _PageSizeOption.custom,
+                    label: 'Custom',
+                  ),
+                ],
+                onSelected: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  setState(() => _pageSize = value);
+                },
+              ),
+            ),
+            if (_pageSize == _PageSizeOption.custom)
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: fieldWidth * 1.5),
+                child: Flex(
+                  direction: isCompact ? Axis.vertical : Axis.horizontal,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Width (mm)',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (value) => setState(() {
+                          _customWidthMm =
+                              double.tryParse(value) ?? _customWidthMm;
+                        }),
+                      ),
+                    ),
+                    SizedBox(
+                      width: isCompact ? 0 : 12,
+                      height: isCompact ? 12 : 0,
+                    ),
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Height (mm)',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (value) => setState(() {
+                          _customHeightMm =
+                              double.tryParse(value) ?? _customHeightMm;
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        CheckboxListTile(
+          value: _skipTiny,
+          onChanged: (value) => setState(() => _skipTiny = value ?? true),
+          title: const Text('Skip tiny images'),
+          subtitle: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: isCompact ? double.infinity : 220,
+            ),
+            child: TextField(
+              controller: _minDimensionController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Minimum width/height (px)',
+              ),
+            ),
+          ),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedOptions(
+    ThemeData theme,
+    double fieldWidth,
+    bool isCompact,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Page & metadata', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            SizedBox(
+              width: fieldWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Margins (mm)', style: theme.textTheme.labelLarge),
+                  Slider(
+                    value: _marginMm.clamp(0, 40).toDouble(),
+                    min: 0,
+                    max: 40,
+                    divisions: 40,
+                    label: _marginMm.toStringAsFixed(0),
+                    onChanged: (value) => setState(() => _marginMm = value),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: TextField(
+                controller: _fileNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Output file name',
+                ),
+              ),
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: TextField(
+                controller: _watermarkController,
+                decoration: const InputDecoration(
+                  labelText: 'Watermark (optional)',
+                ),
+              ),
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: TextField(
+                controller: _headerController,
+                decoration: const InputDecoration(
+                  labelText: 'Header (optional)',
+                ),
+              ),
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: TextField(
+                controller: _footerController,
+                decoration: const InputDecoration(
+                  labelText: 'Footer (optional)',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ImagePreviewTile extends StatelessWidget {
+  const _ImagePreviewTile({
+    super.key,
+    required this.image,
+    required this.width,
+    required this.onRemove,
+  });
+
+  final _ImageItem image;
+  final double width;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: width,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned.fill(child: Image.memory(image.bytes, fit: BoxFit.cover)),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: IconButton.filledTonal(
+              icon: const Icon(Icons.close, size: 18),
+              tooltip: 'Remove',
+              onPressed: onRemove,
+            ),
+          ),
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: 8,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.55),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                child: Text(
+                  '${image.width}×${image.height}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ApiTesterPanel extends StatefulWidget {

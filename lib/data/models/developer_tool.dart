@@ -14,6 +14,7 @@ import '../../services/rsa_service.dart';
 import '../../services/api_tester_service.dart';
 import '../../services/qr_code_service.dart';
 import '../../services/diff_service.dart';
+import '../../services/data_tools_service.dart';
 
 typedef ToolExecutor = Future<String> Function(String input);
 
@@ -76,6 +77,7 @@ class DeveloperToolCatalog {
     const rsaService = RsaService();
     const qrCodeService = QrCodeService();
     const diffService = DiffService();
+    const dataToolsService = DataToolsService();
 
     return [
       DeveloperTool(
@@ -498,6 +500,113 @@ class DeveloperToolCatalog {
                 );
               }
             },
+            isImplemented: true,
+          ),
+        ],
+      ),
+      DeveloperTool(
+        id: 'image_pdf',
+        title: 'Images → PDF',
+        tagline: 'Compile photos into polished PDF documents.',
+        primaryColor: const Color(0xFF0F9D91),
+        secondaryColor: const Color(0xFF3BC9DB),
+        icon: Icons.picture_as_pdf_outlined,
+        category: 'File',
+        operations: [
+          ToolOperation(
+            id: 'image_to_pdf',
+            label: 'Image to PDF Generator',
+            description: 'Arrange images, tweak layout, and export a PDF.',
+            icon: Icons.upload_file,
+            placeholder:
+                'Use the dedicated workspace below to select images and configure PDF options.',
+            executor: (input) async =>
+                'Use the Image → PDF workspace to configure options and export.',
+            isImplemented: true,
+          ),
+        ],
+      ),
+      DeveloperTool(
+        id: 'image_compress',
+        title: 'Image Compressor',
+        tagline: 'Batch compress, resize, and convert formats in seconds.',
+        primaryColor: const Color(0xFF1565C0),
+        secondaryColor: const Color(0xFF64B5F6),
+        icon: Icons.image_outlined,
+        category: 'File',
+        operations: [
+          ToolOperation(
+            id: 'image_compressor',
+            label: 'Image Compressor & Converter',
+            description: 'Adjust quality, resize, convert formats, and export in bulk.',
+            icon: Icons.compress_outlined,
+            placeholder:
+                'Use the image compressor workspace to pick photos, tweak quality, and export.',
+            executor: (input) async =>
+                'Configure options in the Image Compressor workspace, then export your bundle.',
+            isImplemented: true,
+          ),
+        ],
+      ),
+      DeveloperTool(
+        id: 'data_string',
+        title: 'Data & String Tools',
+        tagline: 'Convert between CSV, JSON, YAML and polish strings fast.',
+        primaryColor: const Color(0xFF8E24AA),
+        secondaryColor: const Color(0xFFD05CE3),
+        icon: Icons.dataset_outlined,
+        category: 'Data',
+        operations: [
+          ToolOperation(
+            id: 'csv_to_json',
+            label: 'CSV → JSON',
+            description: 'Turn comma-separated values into structured JSON.',
+            icon: Icons.grid_on_outlined,
+            placeholder: 'Paste CSV and hit run to see JSON output.',
+            executor: (input) async => await dataToolsService.csvToJson(input),
+          ),
+          ToolOperation(
+            id: 'json_to_csv',
+            label: 'JSON → CSV',
+            description: 'Flatten JSON arrays into CSV rows.',
+            icon: Icons.table_rows_outlined,
+            placeholder: '[\n  {"name":"Ada","role":"Engineer"}\n]',
+            executor: (input) async => await dataToolsService.jsonToCsv(input),
+          ),
+          ToolOperation(
+            id: 'yaml_json',
+            label: 'YAML ↔ JSON',
+            description: 'Toggle between YAML and JSON formats instantly.',
+            icon: Icons.swap_horiz_outlined,
+            placeholder: 'Mode auto-detected from the left panel.',
+            executor: (input) async => 'Use the dedicated workspace panel to convert.',
+            isImplemented: true,
+          ),
+          ToolOperation(
+            id: 'text_case',
+            label: 'Text Case Converter',
+            description: 'Switch casing (camel, snake, pascal, title, etc.).',
+            icon: Icons.text_fields_outlined,
+            placeholder: 'Type text and choose a target case.',
+            executor: (input) async => 'Use the text case panel below.',
+            isImplemented: true,
+          ),
+          ToolOperation(
+            id: 'text_counter',
+            label: 'Text Counter',
+            description: 'Count words, lines, characters, and byte size.',
+            icon: Icons.countertops_outlined,
+            placeholder: 'Paste text to see counts instantly.',
+            executor: (input) async => 'Stats appear in the workspace sidebar.',
+            isImplemented: true,
+          ),
+          ToolOperation(
+            id: 'regex_tester',
+            label: 'Regex Tester',
+            description: 'Test expressions with live highlighting.',
+            icon: Icons.find_in_page_outlined,
+            placeholder: 'Type regex and test text in dedicated panel.',
+            executor: (input) async => 'Use the regex tester panel below.',
             isImplemented: true,
           ),
         ],
