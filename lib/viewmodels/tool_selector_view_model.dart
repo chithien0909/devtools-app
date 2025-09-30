@@ -28,10 +28,49 @@ class ToolSelectorViewModel extends ChangeNotifier {
   final Map<String, ToolSession> _sessions = {};
 
   int _selectedIndex = 0;
+  String _searchQuery = '';
+  String? _selectedCategory;
 
   int get selectedIndex => _selectedIndex;
+  String get searchQuery => _searchQuery;
+  String? get selectedCategory => _selectedCategory;
 
   DeveloperTool get activeTool => tools[_selectedIndex];
+
+  List<String> get categories {
+    final values = <String>{for (final tool in tools) tool.category}
+      ..removeWhere((element) => element.trim().isEmpty);
+    final sorted = values.toList()..sort((a, b) => a.compareTo(b));
+    return sorted;
+  }
+
+  List<DeveloperTool> get filteredTools {
+    final query = _searchQuery.trim().toLowerCase();
+    return tools.where((tool) {
+      final matchesCategory =
+          _selectedCategory == null || tool.category == _selectedCategory;
+      if (!matchesCategory) {
+        return false;
+      }
+      if (query.isEmpty) {
+        return true;
+      }
+      final buffer = StringBuffer()
+        ..write(tool.title.toLowerCase())
+        ..write(' ')
+        ..write(tool.tagline.toLowerCase())
+        ..write(' ')
+        ..write(tool.category.toLowerCase());
+      for (final operation in tool.operations) {
+        buffer
+          ..write(' ')
+          ..write(operation.label.toLowerCase())
+          ..write(' ')
+          ..write(operation.description.toLowerCase());
+      }
+      return buffer.toString().contains(query);
+    }).toList();
+  }
 
   ToolSession sessionFor(String toolId) {
     return _sessions.putIfAbsent(toolId, ToolSession.new);
@@ -46,6 +85,13 @@ class ToolSelectorViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectToolById(String id) {
+    final index = tools.indexWhere((tool) => tool.id == id);
+    if (index != -1) {
+      updateSelectedIndex(index);
+    }
+  }
+
   void selectOperation(String toolId, int operationIndex) {
     final session = sessionFor(toolId);
     if (session.activeOperationIndex == operationIndex) {
@@ -53,7 +99,8 @@ class ToolSelectorViewModel extends ChangeNotifier {
     }
     session
       ..activeOperationIndex = operationIndex
-      ..error = null;
+      ..error = null
+      ..output = '';
     notifyListeners();
   }
 
@@ -92,6 +139,22 @@ class ToolSelectorViewModel extends ChangeNotifier {
       session.isProcessing = false;
       notifyListeners();
     }
+  }
+
+  void updateSearchQuery(String query) {
+    if (query == _searchQuery) {
+      return;
+    }
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  void selectCategory(String? category) {
+    if (_selectedCategory == category) {
+      return;
+    }
+    _selectedCategory = category;
+    notifyListeners();
   }
 
   void moveOutputToInput(String toolId) {

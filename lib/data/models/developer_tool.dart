@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/base64_service.dart';
 import '../../services/hash_service.dart';
 import '../../services/json_formatter_service.dart';
+import '../../services/log_parser_service.dart';
 import '../../services/timestamp_service.dart';
 import '../../services/url_codec_service.dart';
 import '../../services/uuid_service.dart';
@@ -37,6 +38,7 @@ class DeveloperTool {
     required this.primaryColor,
     required this.secondaryColor,
     required this.icon,
+    required this.category,
     required this.operations,
   });
 
@@ -46,6 +48,7 @@ class DeveloperTool {
   final Color primaryColor;
   final Color secondaryColor;
   final IconData icon;
+  final String category;
   final List<ToolOperation> operations;
 }
 
@@ -57,6 +60,7 @@ class DeveloperToolCatalog {
     const jsonFormatterService = JsonFormatterService();
     const urlCodecService = UrlCodecService();
     const hashService = HashService();
+    const logParserService = LogParserService();
     const uuidService = UuidService();
     const timestampService = TimestampService();
 
@@ -68,6 +72,7 @@ class DeveloperToolCatalog {
         primaryColor: const Color(0xFF6A5AE0),
         secondaryColor: const Color(0xFF9C6FE4),
         icon: Icons.layers_outlined,
+        category: 'Encoding',
         operations: [
           ToolOperation(
             id: 'encode',
@@ -94,6 +99,7 @@ class DeveloperToolCatalog {
         primaryColor: const Color(0xFF13C2C2),
         secondaryColor: const Color(0xFF52E5E5),
         icon: Icons.data_object,
+        category: 'Data',
         operations: [
           ToolOperation(
             id: 'prettify',
@@ -114,12 +120,32 @@ class DeveloperToolCatalog {
         ],
       ),
       DeveloperTool(
+        id: 'log',
+        title: 'Log Inspector',
+        tagline: 'Parse structured JSON log entries into readable text.',
+        primaryColor: const Color(0xFF8E8DFF),
+        secondaryColor: const Color(0xFFB3B2FF),
+        icon: Icons.receipt_long_outlined,
+        category: 'Monitoring',
+        operations: [
+          ToolOperation(
+            id: 'parse',
+            label: 'Parse Log',
+            description: 'Extract fields from structured log JSON.',
+            icon: Icons.article_outlined,
+            placeholder: 'Paste one JSON log line',
+            executor: logParserService.parse,
+          ),
+        ],
+      ),
+      DeveloperTool(
         id: 'url',
         title: 'URL Toolkit',
         tagline: 'Encode or decode URL fragments safely.',
         primaryColor: const Color(0xFFFF8A65),
         secondaryColor: const Color(0xFFFFAB91),
         icon: Icons.link_outlined,
+        category: 'Web',
         operations: [
           ToolOperation(
             id: 'encode',
@@ -146,6 +172,7 @@ class DeveloperToolCatalog {
         primaryColor: const Color(0xFF4CB782),
         secondaryColor: const Color(0xFF7EE2A9),
         icon: Icons.shield_outlined,
+        category: 'Security',
         operations: [
           ToolOperation(
             id: 'md5',
@@ -180,6 +207,7 @@ class DeveloperToolCatalog {
         primaryColor: const Color(0xFF6DB6FF),
         secondaryColor: const Color(0xFF99D4FF),
         icon: Icons.confirmation_num_outlined,
+        category: 'Identifiers',
         operations: [
           ToolOperation(
             id: 'v4',
@@ -206,6 +234,7 @@ class DeveloperToolCatalog {
         primaryColor: const Color(0xFFF7B500),
         secondaryColor: const Color(0xFFFFD25F),
         icon: Icons.schedule_outlined,
+        category: 'Utilities',
         operations: [
           ToolOperation(
             id: 'ts_to_date',
@@ -232,6 +261,7 @@ class DeveloperToolCatalog {
         primaryColor: const Color(0xFF5E5CE6),
         secondaryColor: const Color(0xFF8E8DFF),
         icon: Icons.qr_code_2_outlined,
+        category: 'Communication',
         operations: [
           ToolOperation(
             id: 'qr_generate',
@@ -259,6 +289,7 @@ class DeveloperToolCatalog {
         primaryColor: const Color(0xFFEE6352),
         secondaryColor: const Color(0xFFFFA38F),
         icon: Icons.compare_arrows_outlined,
+        category: 'Text Tools',
         operations: [
           ToolOperation(
             id: 'diff',
