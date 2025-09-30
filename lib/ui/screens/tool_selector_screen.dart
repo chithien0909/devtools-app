@@ -13,61 +13,66 @@ class ToolSelectorScreen extends StatelessWidget {
     return Consumer<ToolSelectorViewModel>(
       builder: (context, viewModel, _) {
         final tools = viewModel.filteredTools;
-        final activeTool = viewModel.activeTool;
         return LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
-            final toolCols = width >= 1600
-                ? 8
-                : width >= 1200
-                ? 6
-                : width >= 900
-                ? 5
-                : width >= 600
-                ? 3
-                : 2;
-            final opCols = width >= 1600
-                ? 8
-                : width >= 1200
-                ? 6
-                : width >= 900
-                ? 5
-                : width >= 600
-                ? 4
-                : 2;
+            // Bootstrap-like breakpoints: 576, 768, 992, 1200, 1600
+            int toolCols;
+            if (width >= 1600) {
+              toolCols = 8;
+            } else if (width >= 1200) {
+              toolCols = 6;
+            } else if (width >= 992) {
+              toolCols = 5;
+            } else if (width >= 768) {
+              toolCols = 4;
+            } else if (width >= 576) {
+              toolCols = 3;
+            } else {
+              toolCols = 2;
+            }
+
+            int opCols;
+            if (width >= 1600) {
+              opCols = 8;
+            } else if (width >= 1200) {
+              opCols = 6;
+            } else if (width >= 992) {
+              opCols = 5;
+            } else if (width >= 768) {
+              opCols = 4;
+            } else if (width >= 576) {
+              opCols = 3;
+            } else {
+              opCols = 2;
+            }
+            // Build grouped sub-tools by category
+            final Map<String, List<_OpItem>> grouped = {};
+            for (final tool in tools) {
+              final category = tool.category.trim().isEmpty
+                  ? 'Uncategorized'
+                  : tool.category;
+              final list = grouped.putIfAbsent(category, () => <_OpItem>[]);
+              for (var i = 0; i < tool.operations.length; i++) {
+                list.add(_OpItem(tool: tool, opIndex: i));
+              }
+            }
+            final sortedCategories = grouped.keys.toList()..sort();
+            for (final cat in sortedCategories) {
+              grouped[cat]!.sort((a, b) {
+                final tc = a.tool.title.compareTo(b.tool.title);
+                if (tc != 0) return tc;
+                return a.tool.operations[a.opIndex].label.compareTo(
+                  b.tool.operations[b.opIndex].label,
+                );
+              });
+            }
+
             return SingleChildScrollView(
               padding: const EdgeInsets.all(2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (activeTool.operations.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8.0,
-                        horizontal: 6.0,
-                      ),
-                      child: Text(
-                        'Sub tools · ${activeTool.title}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: opCols,
-                        childAspectRatio: 2.6,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      itemCount: activeTool.operations.length,
-                      itemBuilder: (context, index) {
-                        final op = activeTool.operations[index];
-                        return _OperationCard(tool: activeTool, opIndex: index);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                  ],
                   if (tools.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -75,19 +80,19 @@ class ToolSelectorScreen extends StatelessWidget {
                         horizontal: 6.0,
                       ),
                       child: Text(
-                        'All sub tools',
+                        'All tools',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
-                    for (final tool in tools) ...[
-                      if (tool.operations.isNotEmpty) ...[
+                    for (final category in sortedCategories) ...[
+                      if (grouped[category]!.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             vertical: 6.0,
                             horizontal: 6.0,
                           ),
                           child: Text(
-                            tool.title,
+                            category,
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                         ),
@@ -97,13 +102,18 @@ class ToolSelectorScreen extends StatelessWidget {
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: opCols,
-                                childAspectRatio: 2.6,
+                                childAspectRatio: width >= 900 ? 2.6 : 2.1,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
                               ),
-                          itemCount: tool.operations.length,
-                          itemBuilder: (context, index) =>
-                              _OperationCard(tool: tool, opIndex: index),
+                          itemCount: grouped[category]!.length,
+                          itemBuilder: (context, index) {
+                            final item = grouped[category]![index];
+                            return _OperationCard(
+                              tool: item.tool,
+                              opIndex: item.opIndex,
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                       ],
@@ -218,6 +228,12 @@ class ToolCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _OpItem {
+  const _OpItem({required this.tool, required this.opIndex});
+  final DeveloperTool tool;
+  final int opIndex;
 }
 
 class _OperationCard extends StatelessWidget {

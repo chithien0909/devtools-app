@@ -100,6 +100,17 @@ class _HomeShellState extends State<HomeShell> {
             colorScheme.secondaryContainer.withOpacity(0.55),
             colorScheme.tertiaryContainer.withOpacity(0.45),
           ];
+    final sidebarGradientColors = isDark
+        ? <Color>[
+            colorScheme.primary.withOpacity(0.18),
+            colorScheme.secondary.withOpacity(0.14),
+            colorScheme.tertiary.withOpacity(0.10),
+          ]
+        : <Color>[
+            colorScheme.primaryContainer.withOpacity(0.18),
+            colorScheme.secondaryContainer.withOpacity(0.14),
+            colorScheme.tertiaryContainer.withOpacity(0.10),
+          ];
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -111,7 +122,12 @@ class _HomeShellState extends State<HomeShell> {
               duration: const Duration(milliseconds: 350),
               curve: Curves.easeOutCubic,
               decoration: BoxDecoration(
-                color: glassFill,
+                gradient: LinearGradient(
+                  colors: sidebarGradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  stops: const [0.0, 0.5, 1.0],
+                ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: glassBorder),
                 boxShadow: [

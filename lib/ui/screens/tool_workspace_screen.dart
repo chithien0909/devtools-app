@@ -252,53 +252,53 @@ class _OperationSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SegmentedButton<int>(
-      style: ButtonStyle(
-        side: WidgetStateProperty.all(
-          BorderSide(color: colorScheme.outlineVariant),
-        ),
-        backgroundColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected)
-              ? colorScheme.primary.withValues(alpha: 0.15)
-              : Theme.of(context).cardColor,
-        ),
-      ),
-      selected: {activeIndex},
-      onSelectionChanged: (values) {
-        final value = values.first;
-        onChanged(value);
-      },
-      segments: [
-        for (var index = 0; index < tool.operations.length; index++)
-          ButtonSegment<int>(
-            value: index,
-            label: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(tool.operations[index].icon, size: 18),
-                    const SizedBox(width: 6),
-                    Text(tool.operations[index].label),
-                    if (!tool.operations[index].isImplemented)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 6),
-                        child: Icon(Icons.construction, size: 16),
-                      ),
-                  ],
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Row(
+        children: [
+          for (var index = 0; index < tool.operations.length; index++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: ChoiceChip(
+                selected: index == activeIndex,
+                onSelected: (_) => onChanged(index),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                pressElevation: 0,
+                avatar: Icon(
+                  tool.operations[index].icon,
+                  size: 16,
+                  color: index == activeIndex
+                      ? colorScheme.onPrimary
+                      : colorScheme.primary,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  tool.operations[index].description,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                label: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: Text(
+                    tool.operations[index].label,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ],
+                labelStyle: theme.textTheme.bodySmall,
+                selectedColor: colorScheme.primary,
+                backgroundColor: theme.cardColor,
+                shape: StadiumBorder(
+                  side: BorderSide(color: colorScheme.outlineVariant),
+                ),
+                visualDensity: const VisualDensity(
+                  horizontal: -2,
+                  vertical: -2,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
