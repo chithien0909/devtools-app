@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'dart:io';
 
 import '../../data/models/developer_tool.dart';
 import '../../viewmodels/tool_selector_view_model.dart';
@@ -70,106 +72,112 @@ class ToolWorkspaceScreen extends StatelessWidget {
                               onChanged: (index) =>
                                   viewModel.selectOperation(tool.id, index),
                             ),
-                            const SizedBox(height: 24),
-                            _SectionTitle(
-                              icon: operation.icon,
-                              title: operation.label,
-                              subtitle: operation.description,
-                            ),
                             const SizedBox(height: 16),
-                            _InputField(
-                              controller: session.inputController,
-                              hint: operation.placeholder,
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton.icon(
-                                    onPressed: canRun
-                                        ? () => viewModel.runCurrentOperation(
-                                            tool.id,
-                                          )
-                                        : null,
-                                    icon: session.isProcessing
-                                        ? SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: colorScheme.onPrimary,
+                            if (operation.id == 'api_tester')
+                              const _ApiTesterPanel()
+                            else ...[
+                              _SectionTitle(
+                                icon: operation.icon,
+                                title: operation.label,
+                                subtitle: operation.description,
+                              ),
+                              const SizedBox(height: 16),
+                              _InputField(
+                                controller: session.inputController,
+                                hint: operation.placeholder,
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: FilledButton.icon(
+                                      onPressed: canRun
+                                          ? () => viewModel.runCurrentOperation(
+                                              tool.id,
+                                            )
+                                          : null,
+                                      icon: session.isProcessing
+                                          ? SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: colorScheme.onPrimary,
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.play_arrow_rounded,
                                             ),
-                                          )
-                                        : const Icon(Icons.play_arrow_rounded),
-                                    label: Text(
-                                      session.isProcessing
-                                          ? 'Processing...'
-                                          : operation.isImplemented
-                                          ? 'Run ${operation.label}'
-                                          : 'Planned feature',
+                                      label: Text(
+                                        session.isProcessing
+                                            ? 'Processing...'
+                                            : operation.isImplemented
+                                            ? 'Run ${operation.label}'
+                                            : 'Planned feature',
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                IconButton.filledTonal(
-                                  tooltip: 'Use result as input',
-                                  onPressed: session.output.isEmpty
-                                      ? null
-                                      : () => viewModel.moveOutputToInput(
-                                          tool.id,
-                                        ),
-                                  icon: const Icon(
-                                    Icons.flip_camera_android_outlined,
+                                  const SizedBox(width: 12),
+                                  IconButton.filledTonal(
+                                    tooltip: 'Use result as input',
+                                    onPressed: session.output.isEmpty
+                                        ? null
+                                        : () => viewModel.moveOutputToInput(
+                                            tool.id,
+                                          ),
+                                    icon: const Icon(
+                                      Icons.flip_camera_android_outlined,
+                                    ),
                                   ),
+                                ],
+                              ),
+                              if (!operation.isImplemented) ...[
+                                const SizedBox(height: 12),
+                                _InfoBanner(
+                                  message:
+                                      'This utility is on the DevTools+ roadmap. Check the roadmap tab for delivery updates.',
                                 ),
                               ],
-                            ),
-                            if (!operation.isImplemented) ...[
                               const SizedBox(height: 12),
-                              _InfoBanner(
-                                message:
-                                    'This utility is on the DevTools+ roadmap. Check the roadmap tab for delivery updates.',
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 250),
+                                child: session.error == null
+                                    ? const SizedBox.shrink()
+                                    : _ErrorBanner(message: session.error!),
+                              ),
+                              const SizedBox(height: 16),
+                              _SectionTitle(
+                                icon: Icons.outbox_outlined,
+                                title: 'Output',
+                                subtitle:
+                                    'Result updates as soon as processing completes.',
+                              ),
+                              const SizedBox(height: 12),
+                              _OutputPanel(
+                                content: session.output,
+                                onCopy: session.output.isEmpty
+                                    ? null
+                                    : () async {
+                                        await Clipboard.setData(
+                                          ClipboardData(text: session.output),
+                                        );
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                            ..hideCurrentSnackBar()
+                                            ..showSnackBar(
+                                              SnackBar(
+                                                content: const Text(
+                                                  'Copied to clipboard',
+                                                ),
+                                                backgroundColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                              ),
+                                            );
+                                        }
+                                      },
                               ),
                             ],
-                            const SizedBox(height: 12),
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 250),
-                              child: session.error == null
-                                  ? const SizedBox.shrink()
-                                  : _ErrorBanner(message: session.error!),
-                            ),
-                            const SizedBox(height: 16),
-                            _SectionTitle(
-                              icon: Icons.outbox_outlined,
-                              title: 'Output',
-                              subtitle:
-                                  'Result updates as soon as processing completes.',
-                            ),
-                            const SizedBox(height: 12),
-                            _OutputPanel(
-                              content: session.output,
-                              onCopy: session.output.isEmpty
-                                  ? null
-                                  : () async {
-                                      await Clipboard.setData(
-                                        ClipboardData(text: session.output),
-                                      );
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                          ..hideCurrentSnackBar()
-                                          ..showSnackBar(
-                                            SnackBar(
-                                              content: const Text(
-                                                'Copied to clipboard',
-                                              ),
-                                              backgroundColor: Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                            ),
-                                          );
-                                      }
-                                    },
-                            ),
                           ],
                         ),
                       ),
@@ -431,6 +439,205 @@ class _OutputPanel extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _ApiTesterPanel extends StatefulWidget {
+  const _ApiTesterPanel();
+
+  @override
+  State<_ApiTesterPanel> createState() => _ApiTesterPanelState();
+}
+
+class _ApiTesterPanelState extends State<_ApiTesterPanel> {
+  static const _methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD'];
+  String _method = 'GET';
+  final _urlCtrl = TextEditingController();
+  final _bodyCtrl = TextEditingController();
+  final List<MapEntry<String, String>> _headers = [
+    const MapEntry('Accept', 'application/json'),
+  ];
+  bool _useJson = true;
+  String _responseMeta = '';
+  String _responseHeaders = '';
+  String _responseBody = '';
+  bool _isSending = false;
+
+  @override
+  void dispose() {
+    _urlCtrl.dispose();
+    _bodyCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    setState(() => _isSending = true);
+    final sw = Stopwatch()..start();
+    try {
+      final uri = Uri.parse(_urlCtrl.text.trim());
+      final headers = {for (final h in _headers) h.key: h.value};
+      if (_useJson) {
+        headers.putIfAbsent('Content-Type', () => 'application/json');
+      }
+      final method = _method.toUpperCase();
+      final client = HttpClient();
+      final request = await client.openUrl(method, uri);
+      headers.forEach(request.headers.set);
+      if (method != 'GET' && method != 'HEAD') {
+        final body = _bodyCtrl.text;
+        request.add(utf8.encode(body));
+      }
+      final httpResponse = await request.close();
+      final bytes = await httpResponse.fold<List<int>>(<int>[], (b, d) {
+        b.addAll(d);
+        return b;
+      });
+      final elapsedMs = sw.elapsedMilliseconds;
+      final text = utf8.decode(bytes);
+      final size = bytes.length;
+      final status = httpResponse.statusCode;
+      final hdrBuf = StringBuffer();
+      httpResponse.headers.forEach((name, values) {
+        hdrBuf
+          ..write(name)
+          ..write(': ')
+          ..writeln(values.join(', '));
+      });
+      setState(() {
+        _responseMeta =
+            'Status: $status    Time: ${elapsedMs}ms    Size: ${size}B';
+        _responseHeaders = hdrBuf.toString();
+        _responseBody = text;
+      });
+      client.close();
+    } catch (e) {
+      setState(() {
+        _responseMeta = 'Request failed';
+        _responseHeaders = '';
+        _responseBody = e.toString();
+      });
+    } finally {
+      setState(() => _isSending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            DropdownButton<String>(
+              value: _method,
+              items: _methods
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                  .toList(),
+              onChanged: (v) => setState(() => _method = v ?? 'GET'),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _urlCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'https://api.example.com/path',
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: _isSending ? null : _send,
+              icon: _isSending
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_rounded),
+              label: const Text('Send'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Switch(
+              value: _useJson,
+              onChanged: (v) => setState(() => _useJson = v),
+            ),
+            const Text('JSON body'),
+            const SizedBox(width: 12),
+            TextButton(
+              onPressed: () =>
+                  setState(() => _headers.add(const MapEntry('', ''))),
+              child: const Text('Add header'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Column(
+          children: [
+            for (int i = 0; i < _headers.length; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          hintText: 'Header name',
+                        ),
+                        onChanged: (v) =>
+                            _headers[i] = MapEntry(v, _headers[i].value),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          hintText: 'Header value',
+                        ),
+                        onChanged: (v) =>
+                            _headers[i] = MapEntry(_headers[i].key, v),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() => _headers.removeAt(i)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _bodyCtrl,
+          minLines: 6,
+          maxLines: null,
+          decoration: InputDecoration(
+            hintText: _useJson ? '{ "name": "John" }' : 'Raw body',
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(_responseMeta, style: theme.textTheme.labelMedium),
+        const SizedBox(height: 8),
+        ExpansionTile(
+          initiallyExpanded: true,
+          title: const Text('Body'),
+          children: [
+            SelectableText(_responseBody.isEmpty ? '—' : _responseBody),
+          ],
+        ),
+        ExpansionTile(
+          title: const Text('Headers'),
+          children: [
+            SelectableText(_responseHeaders.isEmpty ? '—' : _responseHeaders),
+          ],
+        ),
+      ],
     );
   }
 }

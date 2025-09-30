@@ -159,7 +159,8 @@ class DeveloperToolCatalog {
             label: 'AES Encrypt',
             description: 'Encrypt text with a key.',
             icon: Icons.lock_outline,
-            placeholder: 'Enter text to encrypt and a key like so: {"text": "your text", "key": "your key"}',
+            placeholder:
+                'Enter text to encrypt and a key like so: {"text": "your text", "key": "your key"}',
             executor: (input) async {
               try {
                 final data = json.decode(input) as Map<String, dynamic>;
@@ -167,7 +168,9 @@ class DeveloperToolCatalog {
                 final key = data['key'] as String;
                 return await aesService.encrypt(text, key);
               } catch (e) {
-                throw const FormatException('Invalid input. Expected JSON like: {"text": "your text", "key": "your key"}');
+                throw const FormatException(
+                  'Invalid input. Expected JSON like: {"text": "your text", "key": "your key"}',
+                );
               }
             },
             isImplemented: true,
@@ -177,7 +180,8 @@ class DeveloperToolCatalog {
             label: 'AES Decrypt',
             description: 'Decrypt text with a key.',
             icon: Icons.lock_open_outlined,
-            placeholder: 'Enter text to decrypt and a key like so: {"text": "your text", "key": "your key"}',
+            placeholder:
+                'Enter text to decrypt and a key like so: {"text": "your text", "key": "your key"}',
             executor: (input) async {
               try {
                 final data = json.decode(input) as Map<String, dynamic>;
@@ -185,7 +189,9 @@ class DeveloperToolCatalog {
                 final key = data['key'] as String;
                 return await aesService.decrypt(text, key);
               } catch (e) {
-                throw const FormatException('Invalid input. Expected JSON like: {"text": "your text", "key": "your key"}');
+                throw const FormatException(
+                  'Invalid input. Expected JSON like: {"text": "your text", "key": "your key"}',
+                );
               }
             },
             isImplemented: true,
@@ -195,7 +201,8 @@ class DeveloperToolCatalog {
             label: 'RSA Encrypt',
             description: 'Encrypt text with a public key.',
             icon: Icons.enhanced_encryption_outlined,
-            placeholder: 'Enter text to encrypt and a public key like so: {"text": "your text", "key": "your public key"}',
+            placeholder:
+                'Enter text to encrypt and a public key like so: {"text": "your text", "key": "your public key"}',
             executor: (input) async {
               try {
                 final data = json.decode(input) as Map<String, dynamic>;
@@ -203,7 +210,9 @@ class DeveloperToolCatalog {
                 final key = data['key'] as String;
                 return await rsaService.encrypt(text, key);
               } catch (e) {
-                throw const FormatException('Invalid input. Expected JSON like: {"text": "your text", "key": "your public key"}');
+                throw const FormatException(
+                  'Invalid input. Expected JSON like: {"text": "your text", "key": "your public key"}',
+                );
               }
             },
             isImplemented: true,
@@ -213,7 +222,8 @@ class DeveloperToolCatalog {
             label: 'RSA Decrypt',
             description: 'Decrypt text with a private key.',
             icon: Icons.enhanced_encryption_outlined,
-            placeholder: 'Enter text to decrypt and a private key like so: {"text": "your text", "key": "your private key"}',
+            placeholder:
+                'Enter text to decrypt and a private key like so: {"text": "your text", "key": "your private key"}',
             executor: (input) async {
               try {
                 final data = json.decode(input) as Map<String, dynamic>;
@@ -221,7 +231,9 @@ class DeveloperToolCatalog {
                 final key = data['key'] as String;
                 return await rsaService.decrypt(text, key);
               } catch (e) {
-                throw const FormatException('Invalid input. Expected JSON like: {"text": "your text", "key": "your private key"}');
+                throw const FormatException(
+                  'Invalid input. Expected JSON like: {"text": "your text", "key": "your private key"}',
+                );
               }
             },
             isImplemented: true,
@@ -242,7 +254,8 @@ class DeveloperToolCatalog {
             label: 'API Tester - POST',
             description: 'Quick POST tester.',
             icon: Icons.http_outlined,
-            placeholder: 'Enter a URL and a body to send a POST request to. e.g. {\"url\": \"your url\", \"body\": \"your body\"}',
+            placeholder:
+                'Enter a URL and a body to send a POST request to. e.g. {"url": "your url", "body": "your body"}',
             executor: (input) async {
               try {
                 final data = json.decode(input) as Map<String, dynamic>;
@@ -250,7 +263,9 @@ class DeveloperToolCatalog {
                 final body = data['body'] as String;
                 return await apiTesterService.post(url, body);
               } catch (e) {
-                throw const FormatException('Invalid input. Expected JSON like: {\"url\": \"your url\", \"body\": \"your body\"}');
+                throw const FormatException(
+                  'Invalid input. Expected JSON like: {"url": "your url", "body": "your body"}',
+                );
               }
             },
             isImplemented: true,
@@ -486,10 +501,10 @@ class DeveloperToolCatalog {
           ToolOperation(
             id: 'diff',
             label: 'Diff Viewer',
-            description:
-                'Side-by-side diff with inline highlights.',
+            description: 'Side-by-side diff with inline highlights.',
             icon: Icons.compare,
-            placeholder: 'Enter two texts to compare, like so: {\"text1\": \"your text1\", \"text2\": \"your text2\"}',
+            placeholder:
+                'Enter two texts to compare, like so: {"text1": "your text1", "text2": "your text2"}',
             executor: (input) async {
               try {
                 final data = json.decode(input) as Map<String, dynamic>;
@@ -497,7 +512,9 @@ class DeveloperToolCatalog {
                 final text2 = data['text2'] as String;
                 return await diffService.diff(text1, text2);
               } catch (e) {
-                throw const FormatException('Invalid input. Expected JSON like: {\"text1\": \"your text1\", \"text2\": \"your text2\"}');
+                throw const FormatException(
+                  'Invalid input. Expected JSON like: {"text1": "your text1", "text2": "your text2"}',
+                );
               }
             },
             isImplemented: true,
