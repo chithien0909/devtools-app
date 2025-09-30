@@ -131,6 +131,13 @@ class _HomeShellState extends State<HomeShell> {
                             ? colorScheme.primary
                             : colorScheme.primaryContainer)
                         .withOpacity(0.16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: <Widget>[
@@ -316,6 +323,7 @@ class _HomeShellState extends State<HomeShell> {
       items.add(
         ListTile(
           title: Text(tool.title),
+          trailing: const Icon(Icons.chevron_right, size: 18),
           selected: isToolActive,
           onTap: () =>
               _openToolById(context, viewModel, tool.id, category: category),
@@ -331,7 +339,8 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.only(left: 24.0),
             child: ListTile(
               dense: true,
-              leading: Icon(op.icon, size: 18),
+              visualDensity: const VisualDensity(vertical: -2),
+              leading: Icon(op.icon, size: 16),
               title: Text(op.label),
               subtitle: Text(op.description, overflow: TextOverflow.ellipsis),
               selected: isOpActive,
