@@ -1,17 +1,82 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/developer_tool.dart';
 import '../../viewmodels/tool_selector_view_model.dart';
 import 'tool_workspace_screen.dart';
 
-class ToolSelectorScreen extends StatelessWidget {
+class ToolSelectorScreen extends StatefulWidget {
   const ToolSelectorScreen({super.key});
+
+  @override
+  State<ToolSelectorScreen> createState() => _ToolSelectorScreenState();
+}
+
+class _ToolSelectorScreenState extends State<ToolSelectorScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _scrolled = false;
+  bool _showChips = true;
+  static const String _prefsShowChipsKey = 'tool_selector_show_chips';
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+    _scrollController.addListener(() {
+      final offset = _scrollController.hasClients
+          ? _scrollController.position.pixels
+          : 0.0;
+      final isNowScrolled = offset > 0;
+      // Hysteresis for chips visibility: hide past 120, show under 40
+      bool nextShowChips = _showChips;
+      if (offset > 120) nextShowChips = false;
+      if (offset < 40) nextShowChips = true;
+      if (isNowScrolled != _scrolled || nextShowChips != _showChips) {
+        setState(() {
+          _scrolled = isNowScrolled;
+          _showChips = nextShowChips;
+        });
+      }
+    });
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getBool(_prefsShowChipsKey);
+    if (saved != null && saved != _showChips) {
+      setState(() {
+        _showChips = saved;
+      });
+    }
+  }
+
+  Future<void> _toggleShowChips() async {
+    setState(() {
+      _showChips = !_showChips;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefsShowChipsKey, _showChips);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<ToolSelectorViewModel>(
       builder: (context, viewModel, _) {
+        if (_searchController.text != viewModel.searchQuery) {
+          _searchController.text = viewModel.searchQuery;
+          _searchController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _searchController.text.length),
+          );
+        }
         final tools = viewModel.filteredTools;
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -68,12 +133,102 @@ class ToolSelectorScreen extends StatelessWidget {
               });
             }
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (tools.isNotEmpty) ...[
+            return CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  automaticallyImplyLeading: false,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  elevation: _scrolled ? 2 : 0,
+                  forceElevated: _scrolled,
+                  titleSpacing: 6,
+                  actions: [
+                    IconButton(
+                      tooltip: _showChips ? 'Hide filters' : 'Show filters',
+                      icon: Icon(_showChips ? Icons.tune : Icons.tune_outlined),
+                      onPressed: _toggleShowChips,
+                    ),
+                  ],
+                  title: Material(
+                    elevation: 2,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceVariant,
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 8),
+                          const Icon(Icons.search, size: 20),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: viewModel.updateSearchQuery,
+                              decoration: const InputDecoration(
+                                hintText: 'Search tools and operations',
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          if (viewModel.searchQuery.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                viewModel.updateSearchQuery('');
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  bottom: PreferredSize(
+                    preferredSize:
+                        _showChips ? const Size.fromHeight(64) : const Size.fromHeight(0),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: _showChips ? 64 : 0,
+                      curve: Curves.easeOut,
+                      child: (!_showChips)
+                          ? const SizedBox.shrink()
+                          : Padding(
+                              padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    ChoiceChip(
+                                      label: const Text('All'),
+                                      selected: viewModel.selectedCategory == null,
+                                      onSelected: (_) => viewModel.selectCategory(null),
+                                    ),
+                                    ...viewModel.categories.map(
+                                      (c) => ChoiceChip(
+                                        label: Text(c),
+                                        selected: viewModel.selectedCategory == c,
+                                        onSelected: (_) => viewModel.selectCategory(c),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (tools.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: 8.0,
@@ -118,24 +273,27 @@ class ToolSelectorScreen extends StatelessWidget {
                         const SizedBox(height: 12),
                       ],
                     ],
-                  ],
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: toolCols,
-                      childAspectRatio: 1,
-                      crossAxisSpacing: 20,
-                      mainAxisSpacing: 20,
+                        ],
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: toolCols,
+                            childAspectRatio: 1,
+                            crossAxisSpacing: 20,
+                            mainAxisSpacing: 20,
+                          ),
+                          itemCount: tools.length,
+                          itemBuilder: (context, index) {
+                            final tool = tools[index];
+                            return ToolCard(tool: tool);
+                          },
+                        ),
+                      ],
                     ),
-                    itemCount: tools.length,
-                    itemBuilder: (context, index) {
-                      final tool = tools[index];
-                      return ToolCard(tool: tool);
-                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           },
         );

@@ -158,6 +158,39 @@ class ToolSelectorViewModel extends ChangeNotifier {
     }
   }
 
+  void setSessionState(
+    String toolId, {
+    String? output,
+    String? error,
+    bool clearError = false,
+    bool? isProcessing,
+  }) {
+    final session = sessionFor(toolId);
+    var shouldNotify = false;
+
+    if (output != null && session.output != output) {
+      session.output = output;
+      shouldNotify = true;
+    }
+
+    if (clearError || error != null) {
+      final newError = clearError ? null : error;
+      if (session.error != newError) {
+        session.error = newError;
+        shouldNotify = true;
+      }
+    }
+
+    if (isProcessing != null && session.isProcessing != isProcessing) {
+      session.isProcessing = isProcessing;
+      shouldNotify = true;
+    }
+
+    if (shouldNotify) {
+      notifyListeners();
+    }
+  }
+
   void updateSearchQuery(String query) {
     if (query == _searchQuery) {
       return;

@@ -74,7 +74,6 @@ class DeveloperToolCatalog {
     const timestampService = TimestampService();
     const aesService = AesService();
     const rsaService = RsaService();
-    const apiTesterService = ApiTesterService();
     const qrCodeService = QrCodeService();
     const diffService = DiffService();
 
@@ -239,35 +238,14 @@ class DeveloperToolCatalog {
             isImplemented: true,
           ),
           ToolOperation(
-            id: 'api_tester_get',
-            label: 'API Tester - GET',
-            description: 'Quick GET tester.',
-            icon: Icons.http_outlined,
-            placeholder: 'Enter a URL to send a GET request to.',
-            executor: (input) async {
-              return await apiTesterService.get(input);
-            },
-            isImplemented: true,
-          ),
-          ToolOperation(
-            id: 'api_tester_post',
-            label: 'API Tester - POST',
-            description: 'Quick POST tester.',
+            id: 'api_tester',
+            label: 'API Tester',
+            description:
+                'Compose requests, inspect responses, and copy results instantly.',
             icon: Icons.http_outlined,
             placeholder:
-                'Enter a URL and a body to send a POST request to. e.g. {"url": "your url", "body": "your body"}',
-            executor: (input) async {
-              try {
-                final data = json.decode(input) as Map<String, dynamic>;
-                final url = data['url'] as String;
-                final body = data['body'] as String;
-                return await apiTesterService.post(url, body);
-              } catch (e) {
-                throw const FormatException(
-                  'Invalid input. Expected JSON like: {"url": "your url", "body": "your body"}',
-                );
-              }
-            },
+                'Use the API tester workspace below to craft your HTTP request.',
+            executor: (input) async => const ApiTesterService().get(input),
             isImplemented: true,
           ),
         ],
@@ -484,8 +462,11 @@ class DeveloperToolCatalog {
             label: 'Scan QR',
             description: 'Use device camera to scan codes.',
             icon: Icons.qr_code_scanner,
-            executor: (_) async => 'QR scanning coming soon.',
-            isImplemented: false,
+            placeholder:
+                'Use the live camera panel below to capture QR codes instantly.',
+            executor: (_) async =>
+                'Open the scanner below to capture QR codes in real time.',
+            isImplemented: true,
           ),
         ],
       ),

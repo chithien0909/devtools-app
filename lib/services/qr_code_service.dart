@@ -1,17 +1,11 @@
-
-import 'package:qr_flutter/qr_flutter.dart';
-
 class QrCodeService {
   const QrCodeService();
 
   Future<String> generate(String data) async {
-    if (data.isEmpty) {
-      return '';
+    final trimmed = data.trim();
+    if (trimmed.isEmpty) {
+      throw const FormatException('Enter text to convert into a QR code.');
     }
-    return data;
-  }
-
-  Future<String> scan() async {
-    return 'QR scanning coming soon.';
+    return trimmed;
   }
 }
