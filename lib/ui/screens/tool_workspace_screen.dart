@@ -107,6 +107,30 @@ class ToolWorkspaceScreen extends StatelessWidget {
                                 viewModel: viewModel,
                                 session: session,
                               )
+                            else if (operation.id == 'yaml_json')
+                              _YamlJsonPanel(
+                                toolId: tool.id,
+                                viewModel: viewModel,
+                                session: session,
+                              )
+                            else if (operation.id == 'text_case')
+                              _TextCasePanel(
+                                toolId: tool.id,
+                                viewModel: viewModel,
+                                session: session,
+                              )
+                            else if (operation.id == 'text_counter')
+                              _TextCounterPanel(
+                                toolId: tool.id,
+                                viewModel: viewModel,
+                                session: session,
+                              )
+                            else if (operation.id == 'regex_tester')
+                              _RegexTesterPanel(
+                                toolId: tool.id,
+                                viewModel: viewModel,
+                                session: session,
+                              )
                             else
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,15 +450,16 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
     final rect = ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble());
     final canvas = ui.Canvas(recorder, rect);
     canvas.drawRect(rect, Paint()..color = color);
-    final paragraphBuilder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(
-        textAlign: ui.TextAlign.center,
-        fontSize: 54,
-        fontFamily: 'Roboto',
-      ),
-    )
-      ..pushStyle(ui.TextStyle(color: const ui.Color(0xFFFFFFFF)))
-      ..addText(label);
+    final paragraphBuilder =
+        ui.ParagraphBuilder(
+            ui.ParagraphStyle(
+              textAlign: ui.TextAlign.center,
+              fontSize: 54,
+              fontFamily: 'Roboto',
+            ),
+          )
+          ..pushStyle(ui.TextStyle(color: const ui.Color(0xFFFFFFFF)))
+          ..addText(label);
     final paragraph = paragraphBuilder.build()
       ..layout(ui.ParagraphConstraints(width: width.toDouble()));
     canvas.drawParagraph(
@@ -497,9 +522,7 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
         _isProcessing = false;
         _processed
           ..clear()
-          ..addAll(
-            result.files.map((file) => _ProcessedPreview(file: file)),
-          );
+          ..addAll(result.files.map((file) => _ProcessedPreview(file: file)));
         _pdfFile = result.pdfFile;
         _archiveBytes = result.archiveBytes;
       });
@@ -530,7 +553,9 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
     }
     final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-    final targetDir = Directory(p.join(directory.path, 'image_compressor_$timestamp'));
+    final targetDir = Directory(
+      p.join(directory.path, 'image_compressor_$timestamp'),
+    );
     await targetDir.create(recursive: true);
 
     if (_pdfFile != null) {
@@ -667,7 +692,9 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.play_arrow_rounded),
-                  label: Text(_isProcessing ? 'Processing...' : 'Process images'),
+                  label: Text(
+                    _isProcessing ? 'Processing...' : 'Process images',
+                  ),
                 ),
                 SizedBox(width: isCompact ? 0 : 12, height: isCompact ? 12 : 0),
                 FilledButton.tonalIcon(
@@ -676,14 +703,23 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                   label: const Text('Save all'),
                 ),
                 if (_archiveBytes != null) ...[
-                  SizedBox(width: isCompact ? 0 : 12, height: isCompact ? 12 : 0),
+                  SizedBox(
+                    width: isCompact ? 0 : 12,
+                    height: isCompact ? 12 : 0,
+                  ),
                   OutlinedButton.icon(
                     onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
                       final tempDir = await getTemporaryDirectory();
-                      final tempPath = p.join(tempDir.path, 'image_batch_${DateTime.now().millisecondsSinceEpoch}.zip');
-                      await File(tempPath).writeAsBytes(_archiveBytes!, flush: true);
+                      final tempPath = p.join(
+                        tempDir.path,
+                        'image_batch_${DateTime.now().millisecondsSinceEpoch}.zip',
+                      );
+                      await File(
+                        tempPath,
+                      ).writeAsBytes(_archiveBytes!, flush: true);
                       if (!mounted) return;
-                      ScaffoldMessenger.of(context)
+                      messenger
                         ..hideCurrentSnackBar()
                         ..showSnackBar(
                           SnackBar(content: Text('ZIP saved to $tempPath')),
@@ -712,7 +748,10 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                 ),
               ),
             ] else if (_processed.isNotEmpty) ...[
-              Text('Preview (${_processed.length})', style: theme.textTheme.titleMedium),
+              Text(
+                'Preview (${_processed.length})',
+                style: theme.textTheme.titleMedium,
+              ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
@@ -753,7 +792,10 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Quality', style: theme.textTheme.labelLarge),
-                      Text('${_quality.round()}%', style: theme.textTheme.bodySmall),
+                      Text(
+                        '${_quality.round()}%',
+                        style: theme.textTheme.bodySmall,
+                      ),
                     ],
                   ),
                   Slider(
@@ -788,7 +830,8 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                   ),
                 ],
                 selected: {_resizeMode},
-                onSelectionChanged: (selection) => setState(() => _resizeMode = selection.first),
+                onSelectionChanged: (selection) =>
+                    setState(() => _resizeMode = selection.first),
               ),
             ),
             if (_resizeMode == ResizeMode.percentage)
@@ -801,7 +844,10 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Scale', style: theme.textTheme.labelLarge),
-                        Text('${_resizePercentage.round()}%', style: theme.textTheme.bodySmall),
+                        Text(
+                          '${_resizePercentage.round()}%',
+                          style: theme.textTheme.bodySmall,
+                        ),
                       ],
                     ),
                     Slider(
@@ -810,7 +856,8 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                       max: 400,
                       divisions: 399,
                       label: '${_resizePercentage.round()}%',
-                      onChanged: (value) => setState(() => _resizePercentage = value),
+                      onChanged: (value) =>
+                          setState(() => _resizePercentage = value),
                     ),
                   ],
                 ),
@@ -823,16 +870,24 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                     Expanded(
                       child: TextField(
                         controller: _widthController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: false),
-                        decoration: const InputDecoration(labelText: 'Width (px)'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: false,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Width (px)',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: TextField(
                         controller: _heightController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: false),
-                        decoration: const InputDecoration(labelText: 'Height (px)'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: false,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Height (px)',
+                        ),
                       ),
                     ),
                   ],
@@ -850,12 +905,23 @@ class _ImageCompressorPanelState extends State<_ImageCompressorPanel> {
                 label: const Text('Output format'),
                 initialSelection: _outputFormat,
                 dropdownMenuEntries: const [
-                  DropdownMenuEntry(value: ImageOutputFormat.jpeg, label: 'JPEG'),
+                  DropdownMenuEntry(
+                    value: ImageOutputFormat.jpeg,
+                    label: 'JPEG',
+                  ),
                   DropdownMenuEntry(value: ImageOutputFormat.png, label: 'PNG'),
-                  DropdownMenuEntry(value: ImageOutputFormat.webp, label: 'WebP'),
-                  DropdownMenuEntry(value: ImageOutputFormat.pdf, label: 'PDF (multi-page)'),
+                  DropdownMenuEntry(
+                    value: ImageOutputFormat.webp,
+                    label: 'WebP',
+                  ),
+                  DropdownMenuEntry(
+                    value: ImageOutputFormat.pdf,
+                    label: 'PDF (multi-page)',
+                  ),
                 ],
-                onSelected: (value) => setState(() => _outputFormat = value ?? ImageOutputFormat.jpeg),
+                onSelected: (value) => setState(
+                  () => _outputFormat = value ?? ImageOutputFormat.jpeg,
+                ),
               ),
             ),
             SwitchListTile.adaptive(
@@ -923,6 +989,469 @@ class _ProcessedPreviewTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+enum _YamlJsonMode { yamlToJson, jsonToYaml }
+
+class _YamlJsonPanel extends StatefulWidget {
+  const _YamlJsonPanel({
+    required this.toolId,
+    required this.viewModel,
+    required this.session,
+  });
+
+  final String toolId;
+  final ToolSelectorViewModel viewModel;
+  final ToolSession session;
+
+  @override
+  State<_YamlJsonPanel> createState() => _YamlJsonPanelState();
+}
+
+class _YamlJsonPanelState extends State<_YamlJsonPanel> {
+  _YamlJsonMode _mode = _YamlJsonMode.yamlToJson;
+  bool _autoDetect = true;
+
+  Future<void> _convert() async {
+    final input = widget.session.inputController.text.trim();
+    if (input.isEmpty) {
+      widget.viewModel.setSessionState(
+        widget.toolId,
+        error: 'Provide YAML or JSON to convert.',
+        output: '',
+        clearError: false,
+      );
+      return;
+    }
+    try {
+      final mode = _autoDetect ? _detectMode(input) : _mode;
+      final result = mode == _YamlJsonMode.yamlToJson
+          ? await _dataToolsService.yamlToJson(input)
+          : await _dataToolsService.jsonToYaml(input);
+      widget.viewModel.setSessionState(
+        widget.toolId,
+        output: result,
+        clearError: true,
+      );
+    } catch (error) {
+      widget.viewModel.setSessionState(
+        widget.toolId,
+        error: error.toString(),
+        output: '',
+        clearError: false,
+      );
+    }
+  }
+
+  _YamlJsonMode _detectMode(String input) {
+    final trimmed = input.trimLeft();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      return _YamlJsonMode.jsonToYaml;
+    }
+    return _YamlJsonMode.yamlToJson;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = _autoDetect
+        ? _detectMode(widget.session.inputController.text)
+        : _mode;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SegmentedButton<_YamlJsonMode>(
+              segments: const [
+                ButtonSegment(
+                  value: _YamlJsonMode.yamlToJson,
+                  label: Text('YAML → JSON'),
+                ),
+                ButtonSegment(
+                  value: _YamlJsonMode.jsonToYaml,
+                  label: Text('JSON → YAML'),
+                ),
+              ],
+              selected: {mode},
+              onSelectionChanged: _autoDetect
+                  ? null
+                  : (selection) => setState(() => _mode = selection.first),
+            ),
+            const SizedBox(width: 12),
+            Checkbox(
+              value: _autoDetect,
+              onChanged: (value) => setState(() => _autoDetect = value ?? true),
+            ),
+            const Text('Auto-detect'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: widget.session.inputController,
+          minLines: 8,
+          maxLines: null,
+          decoration: InputDecoration(
+            labelText:
+                'Input (${mode == _YamlJsonMode.yamlToJson ? 'YAML' : 'JSON'})',
+            alignLabelWithHint: true,
+          ),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _convert,
+          icon: const Icon(Icons.swap_horiz_outlined),
+          label: Text(
+            mode == _YamlJsonMode.yamlToJson
+                ? 'Convert to JSON'
+                : 'Convert to YAML',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TextCasePanel extends StatefulWidget {
+  const _TextCasePanel({
+    required this.toolId,
+    required this.viewModel,
+    required this.session,
+  });
+
+  final String toolId;
+  final ToolSelectorViewModel viewModel;
+  final ToolSession session;
+
+  @override
+  State<_TextCasePanel> createState() => _TextCasePanelState();
+}
+
+class _TextCasePanelState extends State<_TextCasePanel> {
+  TextCase _selectedCase = TextCase.camel;
+  bool _liveUpdate = true;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.session.inputController.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.session.inputController.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    if (_liveUpdate) {
+      _convert();
+    }
+  }
+
+  void _convert() {
+    final input = widget.session.inputController.text;
+    final output = _dataToolsService.convertTextCase(input, _selectedCase);
+    widget.viewModel.setSessionState(
+      widget.toolId,
+      output: output,
+      clearError: true,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownMenu<TextCase>(
+          initialSelection: _selectedCase,
+          label: const Text('Target case'),
+          dropdownMenuEntries: const [
+            DropdownMenuEntry(value: TextCase.camel, label: 'camelCase'),
+            DropdownMenuEntry(value: TextCase.pascal, label: 'PascalCase'),
+            DropdownMenuEntry(value: TextCase.snake, label: 'snake_case'),
+            DropdownMenuEntry(value: TextCase.kebab, label: 'kebab-case'),
+            DropdownMenuEntry(value: TextCase.title, label: 'Title Case'),
+            DropdownMenuEntry(value: TextCase.upper, label: 'UPPER CASE'),
+            DropdownMenuEntry(value: TextCase.lower, label: 'lower case'),
+          ],
+          onSelected: (value) {
+            if (value == null) return;
+            setState(() => _selectedCase = value);
+            _convert();
+          },
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Switch(
+              value: _liveUpdate,
+              onChanged: (value) {
+                setState(() => _liveUpdate = value);
+                if (value) {
+                  _convert();
+                }
+              },
+            ),
+            const Text('Apply while typing'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: widget.session.inputController,
+          minLines: 6,
+          maxLines: null,
+          decoration: const InputDecoration(
+            labelText: 'Input text',
+            alignLabelWithHint: true,
+          ),
+        ),
+        if (!_liveUpdate) ...[
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: _convert,
+            icon: const Icon(Icons.text_fields_outlined),
+            label: const Text('Convert text'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _TextCounterPanel extends StatefulWidget {
+  const _TextCounterPanel({
+    required this.toolId,
+    required this.viewModel,
+    required this.session,
+  });
+
+  final String toolId;
+  final ToolSelectorViewModel viewModel;
+  final ToolSession session;
+
+  @override
+  State<_TextCounterPanel> createState() => _TextCounterPanelState();
+}
+
+class _TextCounterPanelState extends State<_TextCounterPanel> {
+  Map<String, Object?> _stats = const {};
+
+  void _compute() {
+    final input = widget.session.inputController.text;
+    final stats = _dataToolsService.textStats(input);
+    setState(() => _stats = stats);
+    widget.viewModel.setSessionState(
+      widget.toolId,
+      output: const JsonEncoder.withIndent('  ').convert(stats),
+      clearError: true,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: widget.session.inputController,
+          minLines: 6,
+          maxLines: null,
+          decoration: const InputDecoration(
+            labelText: 'Paste text to analyze',
+            alignLabelWithHint: true,
+          ),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _compute,
+          icon: const Icon(Icons.analytics_outlined),
+          label: const Text('Count'),
+        ),
+        const SizedBox(height: 12),
+        if (_stats.isNotEmpty)
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: _stats.entries
+                .map(
+                  (entry) => Chip(
+                    avatar: const Icon(Icons.data_usage_outlined, size: 16),
+                    label: Text('${entry.key}: ${entry.value}'),
+                  ),
+                )
+                .toList(),
+          ),
+      ],
+    );
+  }
+}
+
+class _RegexTesterPanel extends StatefulWidget {
+  const _RegexTesterPanel({
+    required this.toolId,
+    required this.viewModel,
+    required this.session,
+  });
+
+  final String toolId;
+  final ToolSelectorViewModel viewModel;
+  final ToolSession session;
+
+  @override
+  State<_RegexTesterPanel> createState() => _RegexTesterPanelState();
+}
+
+class _RegexTesterPanelState extends State<_RegexTesterPanel> {
+  final TextEditingController _patternController = TextEditingController();
+  bool _multiLine = true;
+  bool _caseSensitive = true;
+  RegExpResult? _result;
+
+  @override
+  void dispose() {
+    _patternController.dispose();
+    super.dispose();
+  }
+
+  void _run() {
+    final pattern = _patternController.text;
+    final input = widget.session.inputController.text;
+    if (pattern.isEmpty) {
+      widget.viewModel.setSessionState(
+        widget.toolId,
+        error: 'Enter a regex pattern to test.',
+        output: '',
+        clearError: false,
+      );
+      return;
+    }
+    final result = _dataToolsService.testRegex(
+      pattern,
+      input,
+      multiLine: _multiLine,
+      caseSensitive: _caseSensitive,
+    );
+    setState(() => _result = result);
+    final summary = result.hasError
+        ? 'Error: ${result.errorMessage}'
+        : 'Matches found: ${result.matches.length}';
+    widget.viewModel.setSessionState(
+      widget.toolId,
+      output: summary,
+      clearError: !result.hasError,
+      error: result.hasError ? summary : null,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final result = _result;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _patternController,
+          decoration: const InputDecoration(
+            labelText: 'Regex pattern',
+            prefixIcon: Icon(Icons.pattern),
+          ),
+          onSubmitted: (_) => _run(),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Switch(
+              value: _multiLine,
+              onChanged: (value) => setState(() => _multiLine = value),
+            ),
+            const Text('Multiline'),
+            const SizedBox(width: 16),
+            Switch(
+              value: _caseSensitive,
+              onChanged: (value) => setState(() => _caseSensitive = value),
+            ),
+            const Text('Case sensitive'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: widget.session.inputController,
+          minLines: 6,
+          maxLines: null,
+          decoration: const InputDecoration(
+            labelText: 'Test text',
+            alignLabelWithHint: true,
+          ),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _run,
+          icon: const Icon(Icons.play_arrow_rounded),
+          label: const Text('Run regex'),
+        ),
+        const SizedBox(height: 12),
+        if (result != null)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: result.hasError
+                  ? Text(
+                      result.errorMessage ?? 'Invalid expression',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
+                    )
+                  : _RegexPreview(
+                      input: widget.session.inputController.text,
+                      matches: result.matches,
+                    ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _RegexPreview extends StatelessWidget {
+  const _RegexPreview({required this.input, required this.matches});
+
+  final String input;
+  final List<RegexMatchDetail> matches;
+
+  @override
+  Widget build(BuildContext context) {
+    if (matches.isEmpty) {
+      return Text(
+        'No matches found.',
+        style: Theme.of(context).textTheme.bodyMedium,
+      );
+    }
+    final spans = <TextSpan>[];
+    int index = 0;
+    for (final match in matches) {
+      if (match.start > index) {
+        spans.add(TextSpan(text: input.substring(index, match.start)));
+      }
+      spans.add(
+        TextSpan(
+          text: input.substring(match.start, match.end),
+          style: TextStyle(
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.secondary.withOpacity(0.3),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+      index = match.end;
+    }
+    if (index < input.length) {
+      spans.add(TextSpan(text: input.substring(index)));
+    }
+    return SelectableText.rich(TextSpan(children: spans));
   }
 }
 
@@ -1647,8 +2176,9 @@ class _ImageToPdfPanelState extends State<_ImageToPdfPanel> {
             const SizedBox(height: 16),
             Flex(
               direction: isVeryCompact ? Axis.vertical : Axis.horizontal,
-              crossAxisAlignment:
-                  isVeryCompact ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
+              crossAxisAlignment: isVeryCompact
+                  ? CrossAxisAlignment.stretch
+                  : CrossAxisAlignment.center,
               children: [
                 FilledButton.icon(
                   onPressed: _isGenerating ? null : _generatePdf,
@@ -1691,29 +2221,29 @@ class _ImageToPdfPanelState extends State<_ImageToPdfPanel> {
               const SizedBox(height: 12),
               SizedBox(
                 height: previewHeight,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final double height = constraints.maxHeight.isFinite
-                    ? constraints.maxHeight
-                    : 420.0;
-                final double width = constraints.maxWidth.isFinite
-                    ? constraints.maxWidth
-                    : double.infinity;
-                return SizedBox(
-                  height: height,
-                  width: width,
-                  child: PdfPreview(
-                    build: (format) async => _pdfBytes!,
-                    allowPrinting: true,
-                    allowSharing: true,
-                    canChangePageFormat: false,
-                    pdfFileName: _fileNameController.text.trim().isEmpty
-                        ? 'output.pdf'
-                        : _fileNameController.text.trim(),
-                  ),
-                );
-              },
-            ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final double height = constraints.maxHeight.isFinite
+                        ? constraints.maxHeight
+                        : 420.0;
+                    final double width = constraints.maxWidth.isFinite
+                        ? constraints.maxWidth
+                        : double.infinity;
+                    return SizedBox(
+                      height: height,
+                      width: width,
+                      child: PdfPreview(
+                        build: (format) async => _pdfBytes!,
+                        allowPrinting: true,
+                        allowSharing: true,
+                        canChangePageFormat: false,
+                        pdfFileName: _fileNameController.text.trim().isEmpty
+                            ? 'output.pdf'
+                            : _fileNameController.text.trim(),
+                      ),
+                    );
+                  },
+                ),
               ),
             ],
           ],
@@ -1809,8 +2339,10 @@ class _ImageToPdfPanelState extends State<_ImageToPdfPanel> {
                 constraints: BoxConstraints(maxWidth: fieldWidth * 1.5),
                 child: Flex(
                   direction: isCompact ? Axis.vertical : Axis.horizontal,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: isCompact ? double.infinity : fieldWidth * 0.7,
                       child: TextField(
                         decoration: const InputDecoration(
                           labelText: 'Width (mm)',
@@ -1828,7 +2360,8 @@ class _ImageToPdfPanelState extends State<_ImageToPdfPanel> {
                       width: isCompact ? 0 : 12,
                       height: isCompact ? 12 : 0,
                     ),
-                    Expanded(
+                    SizedBox(
+                      width: isCompact ? double.infinity : fieldWidth * 0.7,
                       child: TextField(
                         decoration: const InputDecoration(
                           labelText: 'Height (mm)',

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:csv/csv.dart';
 import 'package:yaml/yaml.dart';
-import 'package:yaml/yaml.dart' as yaml; // for encode
 
 class CsvJsonResult {
   CsvJsonResult({required this.output, this.stats});
@@ -80,14 +79,13 @@ class DataToolsService {
   Future<String> jsonToYaml(String jsonInput) async {
     try {
       final parsed = json.decode(jsonInput);
-      final yamlString = yamlYamlString(parsed);
-      return yamlString;
+      return _writeYaml(parsed);
     } catch (error) {
       throw FormatException('Unable to convert JSON: $error');
     }
   }
 
-  String yamlYamlString(Object? data) {
+  String _writeYaml(Object? data) {
     final buffer = StringBuffer();
     void writeYaml(Object? value, {int indent = 0}) {
       final spaces = '  ' * indent;
@@ -165,17 +163,35 @@ class DataToolsService {
     }
   }
 
-  RegExpResult testRegex(String pattern, String testInput, {bool multiLine = true, bool caseSensitive = true}) {
+  RegExpResult testRegex(
+    String pattern,
+    String testInput, {
+    bool multiLine = true,
+    bool caseSensitive = true,
+  }) {
     try {
       final regex = RegExp(
         pattern,
         multiLine: multiLine,
         caseSensitive: caseSensitive,
       );
-      final matches = regex.allMatches(testInput).map((m) => _MatchResult(m.start, m.end, m.group(0) ?? '')).toList();
+      final matches = regex
+          .allMatches(testInput)
+          .map(
+            (m) => RegexMatchDetail(
+              start: m.start,
+              end: m.end,
+              value: m.group(0) ?? '',
+            ),
+          )
+          .toList();
       return RegExpResult(matches: matches, hasError: false);
     } catch (error) {
-      return RegExpResult(matches: const [], hasError: true, errorMessage: error.toString());
+      return RegExpResult(
+        matches: const [],
+        hasError: true,
+        errorMessage: error.toString(),
+      );
     }
   }
 
@@ -196,47 +212,61 @@ class DataToolsService {
 
   String _toDelimited(String input, String delimiter, {bool lower = false}) {
     final words = _splitWords(input);
-    final transformed = words.map(lower ? (w) => w.toLowerCase() : (w) => w.toLowerCase()).join(delimiter);
-    return transformed;
+    final transformed = words
+        .map((word) => lower ? word.toLowerCase() : word)
+        .map((word) => word)
+        .join(delimiter);
+    return lower ? transformed.toLowerCase() : transformed;
   }
 
   String _titleCase(String input) {
     final words = _splitWords(input);
-    return words.map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1).toLowerCase()).join(' ');
+    return words
+        .map(
+          (w) => w.isEmpty
+              ? ''
+              : w[0].toUpperCase() + w.substring(1).toLowerCase(),
+        )
+        .join(' ');
   }
 
   List<String> _splitWords(String input) {
-    final pattern = RegExp(r'[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+');
-    final matches = pattern.allMatches(input.replaceAll('_', ' ').replaceAll('-', ' '));
-    final words = matches.map((m) => m.group(0) ?? '').where((w) => w.isNotEmpty).toList();
-    if (words.isEmpty) {
-      final fallback = input.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-      return fallback;
+    final normalized = input.replaceAll(RegExp(r'[_\-]'), ' ');
+    final matches = RegExp(r'[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+')
+        .allMatches(normalized)
+        .map((m) => m.group(0) ?? '')
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (matches.isEmpty) {
+      return normalized
+          .split(RegExp(r'\s+'))
+          .where((element) => element.isNotEmpty)
+          .toList();
     }
-    return words;
+    return matches;
   }
 }
 
-enum TextCase {
-  camel,
-  pascal,
-  snake,
-  kebab,
-  title,
-  upper,
-  lower,
-}
+enum TextCase { camel, pascal, snake, kebab, title, upper, lower }
 
 class RegExpResult {
-  const RegExpResult({required this.matches, required this.hasError, this.errorMessage});
+  const RegExpResult({
+    required this.matches,
+    required this.hasError,
+    this.errorMessage,
+  });
 
-  final List<_MatchResult> matches;
+  final List<RegexMatchDetail> matches;
   final bool hasError;
   final String? errorMessage;
 }
 
-class _MatchResult {
-  const _MatchResult(this.start, this.end, this.value);
+class RegexMatchDetail {
+  const RegexMatchDetail({
+    required this.start,
+    required this.end,
+    required this.value,
+  });
 
   final int start;
   final int end;

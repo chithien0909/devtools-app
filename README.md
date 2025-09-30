@@ -50,6 +50,7 @@ flutter test
 | Text Diff | Diff Viewer | Side-by-side comparison powered by `diff_match_patch`. |
 | Images → PDF | Image to PDF Generator | Select, reorder, filter, watermark, preview, and export PDFs. |
 | Image Compressor | Image Compressor & Converter | Batch compress, resize, convert (PNG/JPEG/WebP/PDF), strip metadata, and export. |
+| Data & String Tools | CSV/JSON/YAML/Regex/Text | Convert CSV↔JSON, JSON↔YAML, tweak casing, count text, and test regex patterns. |
 
 ## Images → PDF generator
 
@@ -72,6 +73,14 @@ The **Image Compressor** workspace adds power-user controls on top of the PDF to
 - Convert between PNG, JPEG, WebP, or bundle the results into a multi-page PDF.
 - Keep or strip EXIF metadata with one toggle.
 - Preview every processed output (or the generated PDF) before saving, then export individual files, the combined PDF, or a ZIP archive in one click.
+
+## Data & String Tools
+
+- Convert between **CSV and JSON** in either direction, with automatic header generation.
+- Toggle **JSON ↔ YAML** with either auto-detection or manual direction.
+- Run the **Text Case converter** (camelCase, PascalCase, snake_case, kebab-case, Title Case, upper, lower) with optional live updates.
+- Use the **Text Counter** to surface line, blank line, word, character, and byte counts instantly.
+- Debug patterns in the **Regex Tester** with live match highlighting, multiline/case-sensitivity toggles, and copyable summaries.
 
 ## Roadmap highlights
 
