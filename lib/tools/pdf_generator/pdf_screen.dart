@@ -47,8 +47,9 @@ class _PdfGeneratorScreenState extends State<PdfGeneratorScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  mainAxisSize:
-                      hasFiniteH ? MainAxisSize.max : MainAxisSize.min,
+                  mainAxisSize: hasFiniteH
+                      ? MainAxisSize.max
+                      : MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
@@ -74,10 +75,9 @@ class _PdfGeneratorScreenState extends State<PdfGeneratorScreen> {
                                 height: 50,
                                 fit: BoxFit.cover,
                               ),
-                              title: Text(_images[index]
-                                  .path
-                                  .split('\\\\')
-                                  .last),
+                              title: Text(
+                                _images[index].path.split('\\\\').last,
+                              ),
                             );
                           },
                         ),
@@ -97,7 +97,8 @@ class _PdfGeneratorScreenState extends State<PdfGeneratorScreen> {
                                 fit: BoxFit.cover,
                               ),
                               title: Text(
-                                  _images[index].path.split('\\\\').last),
+                                _images[index].path.split('\\\\').last,
+                              ),
                             );
                           },
                         ),
