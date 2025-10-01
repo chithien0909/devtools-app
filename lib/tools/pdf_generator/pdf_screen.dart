@@ -34,41 +34,86 @@ class _PdfGeneratorScreenState extends State<PdfGeneratorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('PDF Generator')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            ElevatedButton(
-              onPressed: _pickImages,
-              child: const Text('Pick Images'),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _images.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    leading: Image.file(
-                      _images[index],
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hasFiniteW = constraints.hasBoundedWidth;
+        final hasFiniteH = constraints.hasBoundedHeight;
+        return Material(
+          color: Theme.of(context).colorScheme.surface,
+          child: SizedBox(
+            width: hasFiniteW ? constraints.maxWidth : null,
+            height: hasFiniteH ? constraints.maxHeight : null,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize:
+                      hasFiniteH ? MainAxisSize.max : MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'PDF Generator',
+                      style: Theme.of(context).textTheme.titleLarge,
+                      textAlign: TextAlign.center,
                     ),
-                    title: Text(_images[index].path.split('\\').last),
-                  );
-                },
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _pickImages,
+                      child: const Text('Pick Images'),
+                    ),
+                    const SizedBox(height: 16),
+                    if (hasFiniteH)
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _images.length,
+                          itemBuilder: (context, index) {
+                            return ListTile(
+                              leading: Image.file(
+                                _images[index],
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                              ),
+                              title: Text(_images[index]
+                                  .path
+                                  .split('\\\\')
+                                  .last),
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: 240,
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _images.length,
+                          itemBuilder: (context, index) {
+                            return ListTile(
+                              leading: Image.file(
+                                _images[index],
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                              ),
+                              title: Text(
+                                  _images[index].path.split('\\\\').last),
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _generatePdf,
+                      child: const Text('Generate PDF'),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _generatePdf,
-              child: const Text('Generate PDF'),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

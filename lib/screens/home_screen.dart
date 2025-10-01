@@ -2,6 +2,8 @@ import 'package:devtools_plus/core/widgets/glass_sidebar.dart';
 import 'package:devtools_plus/models/tool_model.dart';
 import 'package:devtools_plus/providers/tool_provider.dart';
 import 'package:devtools_plus/screens/dashboard_screen.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -24,27 +26,57 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late final LiquidController _liquidController;
+  late final PageController _pageController;
   int _currentLiquidPage = 0;
 
   @override
   void initState() {
     super.initState();
     _liquidController = LiquidController();
+    _pageController = PageController(initialPage: 0);
   }
 
   void _handleToolSelected(ToolModel tool) {
     ref.read(activeToolProvider.notifier).state = tool;
-    _liquidController.animateToPage(page: 1, duration: 700);
+    final isDesktop =
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+    if (isDesktop) {
+      _pageController.animateToPage(
+        1,
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _liquidController.animateToPage(page: 1, duration: 700);
+    }
   }
 
   void _backToDashboard() {
-    _liquidController.animateToPage(page: 0, duration: 600);
+    final isDesktop =
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+    if (isDesktop) {
+      _pageController.animateToPage(
+        0,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _liquidController.animateToPage(page: 0, duration: 600);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final section = ref.watch(appSectionProvider);
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Responsive spacing based on screen size
+    final spacing = screenWidth < 1200 ? 12.0 : 18.0;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -56,7 +88,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const GlassSidebar(),
-                const SizedBox(width: 18),
+                SizedBox(width: spacing),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 400),
@@ -69,7 +101,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 18),
+                SizedBox(width: spacing),
               ],
             ),
           ),
@@ -93,30 +125,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-        child: LiquidSwipe(
-          pages: [
-            DashboardScreen(onToolSelected: _handleToolSelected),
-            ToolDetailView(onBack: _backToDashboard),
-          ],
-          liquidController: _liquidController,
-          initialPage: _currentLiquidPage,
-          enableLoop: false,
-          waveType: WaveType.liquidReveal,
-          fullTransitionValue: 600,
-          slideIconWidget: const HugeIcon(
-            icon: _slideIcon,
-            color: Colors.white,
-            size: 22,
-          ),
-          positionSlideIcon: 0.4,
-          onPageChangeCallback: (page) {
-            setState(() => _currentLiquidPage = page);
-            if (page == 0) {
-              ref.read(activeToolProvider.notifier).state = null;
-            }
-          },
-        ),
+        child: _buildPager(theme),
       ),
+    );
+  }
+
+  Widget _buildPager(ThemeData theme) {
+    final isDesktop =
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+    final pages = <Widget>[
+      DashboardScreen(onToolSelected: _handleToolSelected),
+      ToolDetailView(onBack: _backToDashboard),
+    ];
+
+    if (isDesktop) {
+      return PageView(
+        controller: _pageController,
+        physics: const ClampingScrollPhysics(),
+        onPageChanged: (page) {
+          setState(() => _currentLiquidPage = page);
+          if (page == 0) {
+            ref.read(activeToolProvider.notifier).state = null;
+          }
+        },
+        children: pages,
+      );
+    }
+
+    return LiquidSwipe(
+      pages: pages,
+      liquidController: _liquidController,
+      initialPage: _currentLiquidPage,
+      enableLoop: false,
+      waveType: WaveType.liquidReveal,
+      fullTransitionValue: 600,
+      slideIconWidget: const HugeIcon(
+        icon: _slideIcon,
+        color: Colors.white,
+        size: 22,
+      ),
+      positionSlideIcon: 0.4,
+      onPageChangeCallback: (page) {
+        setState(() => _currentLiquidPage = page);
+        if (page == 0) {
+          ref.read(activeToolProvider.notifier).state = null;
+        }
+      },
     );
   }
 }

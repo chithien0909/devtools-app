@@ -9,6 +9,9 @@ class GlassSidebar extends ConsumerWidget {
   static const double _minWidth = 80;
   static const double _maxWidth = 280;
 
+  // Responsive breakpoints
+  static const double _tabletBreakpoint = 1200;
+
   static const IconData _dashboardIcon = Icons.dashboard;
   static const IconData _settingsIcon = Icons.settings;
   static const IconData _aboutIcon = Icons.info;
@@ -24,7 +27,8 @@ class GlassSidebar extends ConsumerWidget {
     final screenWidth = MediaQuery.of(context).size.width;
 
     // Determine if sidebar should be collapsed based on screen size
-    final isCollapsed = screenWidth < 1200;
+    // Mobile: < 768px, Tablet: 768-1200px, Desktop: > 1200px
+    final isCollapsed = screenWidth < _tabletBreakpoint;
     final sidebarWidth = isCollapsed ? _minWidth : _maxWidth;
 
     return Container(
