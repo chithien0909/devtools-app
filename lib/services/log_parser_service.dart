@@ -4,50 +4,71 @@ class LogParserService {
   const LogParserService();
 
   Future<String> parse(String input) async {
-    if (input.trim().isEmpty) {
-      return '';
-    }
-
-    dynamic decoded;
     try {
-      decoded = jsonDecode(input);
-    } on FormatException {
-      throw const FormatException('Input is not valid JSON.');
+      final jsonData = json.decode(input.trim());
+      return _formatLogEntry(jsonData);
+    } catch (e) {
+      throw FormatException('Invalid JSON log entry: $e');
     }
+  }
 
-    if (decoded is! Map<String, dynamic>) {
-      throw const FormatException('Expected a JSON object at the top level.');
-    }
+  String _formatLogEntry(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final buffer = StringBuffer();
 
-    final buffer = StringBuffer();
-    const keyOrder = ['level', 'time', 'msg'];
+      // Extract common log fields
+      final timestamp = data['timestamp'] ?? data['time'] ?? data['@timestamp'];
+      final level = data['level'] ?? data['severity'] ?? data['log_level'];
+      final message = data['message'] ?? data['msg'] ?? data['text'];
+      final service = data['service'] ?? data['app'] ?? data['application'];
 
-    void writeEntry(String key, dynamic value) {
-      if (value == null) {
-        return;
+      if (timestamp != null) {
+        buffer.writeln('🕒 $timestamp');
       }
-      if (value is Map || value is List) {
-        const encoder = JsonEncoder.withIndent('  ');
-        buffer
-          ..writeln('$key:')
-          ..writeln(encoder.convert(value));
-      } else {
-        buffer.writeln('$key: $value');
+
+      if (level != null) {
+        buffer.writeln('📊 Level: $level');
       }
-    }
 
-    for (final key in keyOrder) {
-      if (decoded.containsKey(key)) {
-        writeEntry(key, decoded[key]);
+      if (service != null) {
+        buffer.writeln('🔧 Service: $service');
       }
+
+      if (message != null) {
+        buffer.writeln('💬 Message: $message');
+      }
+
+      // Add other fields
+      final otherFields = <String, dynamic>{};
+      data.forEach((key, value) {
+        if (![
+          'timestamp',
+          'time',
+          '@timestamp',
+          'level',
+          'severity',
+          'log_level',
+          'message',
+          'msg',
+          'text',
+          'service',
+          'app',
+          'application',
+        ].contains(key)) {
+          otherFields[key] = value;
+        }
+      });
+
+      if (otherFields.isNotEmpty) {
+        buffer.writeln('\n📋 Additional Fields:');
+        otherFields.forEach((key, value) {
+          buffer.writeln('  • $key: $value');
+        });
+      }
+
+      return buffer.toString();
     }
 
-    final remainingKeys = decoded.keys.where((key) => !keyOrder.contains(key));
-
-    for (final key in remainingKeys) {
-      writeEntry(key, decoded[key]);
-    }
-
-    return buffer.toString().trimRight();
+    return 'Parsed: $data';
   }
 }

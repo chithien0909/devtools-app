@@ -1,11 +1,8 @@
-class QrCodeService {
-  const QrCodeService();
+import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
-  Future<String> generate(String data) async {
-    final trimmed = data.trim();
-    if (trimmed.isEmpty) {
-      throw const FormatException('Enter text to convert into a QR code.');
-    }
-    return trimmed;
+class QrCodeService {
+  Widget generate(String data) {
+    return QrImageView(data: data, version: QrVersions.auto, size: 200.0);
   }
 }

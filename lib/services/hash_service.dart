@@ -1,28 +1,25 @@
 import 'dart:convert';
-
 import 'package:crypto/crypto.dart';
 
 class HashService {
-  const HashService();
+  String generate(String input, String algorithm) {
+    final bytes = utf8.encode(input);
+    Digest digest;
 
-  Future<String> md5Hash(String input) async {
-    if (input.isEmpty) {
-      return '';
+    switch (algorithm) {
+      case 'md5':
+        digest = md5.convert(bytes);
+        break;
+      case 'sha1':
+        digest = sha1.convert(bytes);
+        break;
+      case 'sha256':
+        digest = sha256.convert(bytes);
+        break;
+      default:
+        return 'Invalid algorithm';
     }
-    return md5.convert(utf8.encode(input)).toString();
-  }
 
-  Future<String> sha1Hash(String input) async {
-    if (input.isEmpty) {
-      return '';
-    }
-    return sha1.convert(utf8.encode(input)).toString();
-  }
-
-  Future<String> sha256Hash(String input) async {
-    if (input.isEmpty) {
-      return '';
-    }
-    return sha256.convert(utf8.encode(input)).toString();
+    return digest.toString();
   }
 }

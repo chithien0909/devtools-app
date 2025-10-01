@@ -1,22 +1,16 @@
-import 'dart:ui';
-
-import 'package:devtools_plus/app.dart';
+import 'package:devtools_plus/main.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('renders the tool selector overview', (tester) async {
-    final view = tester.view;
-    view.physicalSize = const Size(1200, 2200);
-    view.devicePixelRatio = 1;
-    addTearDown(() {
-      view.resetPhysicalSize();
-      view.resetDevicePixelRatio();
-    });
+  testWidgets('App starts and displays dashboard', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
 
-    await tester.pumpWidget(const DevToolsApp());
-    await tester.pumpAndSettle();
+    // Verify that the dashboard title is present.
+    expect(find.text('Dashboard'), findsOneWidget);
 
-    expect(find.text('DevTools+'), findsOneWidget);
-    expect(find.text('Base64 Studio'), findsWidgets);
+    // Verify that at least one tool card is present.
+    expect(find.byType(Card), findsWidgets);
   });
 }

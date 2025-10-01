@@ -6,26 +6,34 @@ class AppTheme {
 
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF6750A4),
+      seedColor: const Color(0xFF3B82F6),
       brightness: Brightness.light,
+      primary: const Color(0xFF3B82F6),
+      secondary: const Color(0xFF60A5FA),
+      surface: const Color(0xFFF0F4FF),
+      onSurface: const Color(0xFF1E293B),
     );
     return _baseTheme(colorScheme).copyWith(
-      scaffoldBackgroundColor: const Color(0xFFF5F6FC),
+      scaffoldBackgroundColor: const Color(0xFFEBF1FF),
       cardTheme: _cardTheme(colorScheme, Colors.white),
     );
   }
 
   static ThemeData get dark {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF9BA7FF),
+      seedColor: const Color(0xFF8B5CF6),
       brightness: Brightness.dark,
+      primary: const Color(0xFF8B5CF6),
+      secondary: const Color(0xFFA78BFA),
+      surface: const Color(0xFF1E1B4B),
+      onSurface: const Color(0xFFE2E8F0),
     );
     return _baseTheme(colorScheme).copyWith(
-      scaffoldBackgroundColor: const Color(0xFF0F1624),
-      cardTheme: _cardTheme(colorScheme, const Color(0xFF182132)),
+      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      cardTheme: _cardTheme(colorScheme, const Color(0xFF1E293B)),
       inputDecorationTheme: _inputDecorationTheme(
         colorScheme,
-      ).copyWith(fillColor: const Color(0xFF1E2535)),
+      ).copyWith(fillColor: const Color(0xFF283347)),
     );
   }
 
