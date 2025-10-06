@@ -11,6 +11,16 @@ import 'package:devtools_plus/tools/regex_tester/regex_screen.dart';
 import 'package:devtools_plus/tools/text_case_converter/text_case_screen.dart';
 import 'package:devtools_plus/tools/url_encoder/url_screen.dart';
 import 'package:devtools_plus/tools/uuid_generator/uuid_screen.dart';
+import 'package:devtools_plus/tools/yaml_json/yaml_json_screen.dart';
+import 'package:devtools_plus/tools/csv_converter/csv_screen.dart';
+import 'package:devtools_plus/tools/markdown/markdown_screen.dart';
+import 'package:devtools_plus/tools/hmac/hmac_screen.dart';
+import 'package:devtools_plus/tools/diff/diff_screen.dart';
+import 'package:devtools_plus/tools/url_builder/url_builder_screen.dart';
+import 'package:devtools_plus/tools/slug/slug_screen.dart';
+import 'package:devtools_plus/tools/color_tools/color_screen.dart';
+import 'package:devtools_plus/tools/image_format/image_format_screen.dart';
+import 'package:devtools_plus/tools/exif/exif_screen.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class ToolRegistry {
@@ -113,6 +123,94 @@ class ToolRegistry {
       category: ToolCategory.utility,
       screenBuilder: () => const RegexTesterScreen(),
       keywords: ['regex', 'regexp', 'pattern', 'match', 'test', 'search'],
+    ),    ToolDefinition(
+      id: 'yaml_json',
+      name: 'YAML ⇄ JSON',
+      description: 'Convert YAML and JSON with validation.',
+      icon: HugeIcons.strokeRoundedSourceCode,
+      category: ToolCategory.data,
+      screenBuilder: () => const YamlJsonScreen(),
+      keywords: ['yaml', 'json', 'convert', 'format', 'serialize'],
+    ),    ToolDefinition(
+      id: 'csv_converter',
+      name: 'CSV ⇄ JSON / TSV',
+      description: 'Convert CSV/TSV and JSON with headers handling.',
+      icon: HugeIcons.strokeRoundedTable02,
+      category: ToolCategory.data,
+      screenBuilder: () => const CsvConverterScreen(),
+      keywords: ['csv', 'tsv', 'json', 'delimiter', 'convert'],
+    ),
+    ToolDefinition(
+      id: 'markdown',
+      name: 'Markdown Previewer',
+      description: 'Live Markdown preview and export to PDF.',
+      icon: HugeIcons.strokeRoundedBookOpen01,
+      category: ToolCategory.utility,
+      screenBuilder: () => const MarkdownScreen(),
+      keywords: ['markdown', 'md', 'preview', 'pdf', 'export'],
+    ),
+    ToolDefinition(
+      id: 'hmac',
+      name: 'HMAC Generator',
+      description: 'Generate HMAC signatures (SHA-1/256/512).',
+      icon: HugeIcons.strokeRoundedShield02,
+      category: ToolCategory.security,
+      screenBuilder: () => const HmacScreen(),
+      keywords: ['hmac', 'signature', 'sha256', 'sha512', 'sha1', 'security'],
+    ),
+    ToolDefinition(
+      id: 'diff',
+      name: 'Text Diff',
+      description: 'Side-by-side text diff with highlights.',
+      icon: HugeIcons.strokeRoundedSearch01,
+      category: ToolCategory.utility,
+      screenBuilder: () => const DiffScreen(),
+      keywords: ['diff', 'compare', 'text', 'json'],
+    ),
+    ToolDefinition(
+      id: 'url_builder',
+      name: 'URL Builder',
+      description: 'Parse and build URLs, query params, fragments.',
+      icon: HugeIcons.strokeRoundedLink02,
+      category: ToolCategory.utility,
+      screenBuilder: () => const UrlBuilderScreen(),
+      keywords: ['url', 'uri', 'query', 'builder', 'parser'],
+    ),
+    ToolDefinition(
+      id: 'slug',
+      name: 'Slugifier',
+      description: 'Create URL-safe slugs; normalize whitespace.',
+      icon: HugeIcons.strokeRoundedTextSquare,
+      category: ToolCategory.utility,
+      screenBuilder: () => const SlugScreen(),
+      keywords: ['slug', 'normalize', 'text'],
+    ),
+    ToolDefinition(
+      id: 'color_tools',
+      name: 'Color Tools',
+      description: 'HEX/RGB/HSL convert; palette from image.',
+      icon: HugeIcons.strokeRoundedPenTool01,
+      category: ToolCategory.design,
+      screenBuilder: () => const ColorToolsScreen(),
+      keywords: ['color', 'hex', 'rgb', 'hsl', 'palette', 'image'],
+    ),
+    ToolDefinition(
+      id: 'image_format',
+      name: 'Image Format Converter',
+      description: 'Convert images PNG ⇄ JPG ⇄ WebP with quality.',
+      icon: HugeIcons.strokeRoundedImage01,
+      category: ToolCategory.file,
+      screenBuilder: () => const ImageFormatScreen(),
+      keywords: ['image', 'png', 'jpg', 'webp', 'convert'],
+    ),
+    ToolDefinition(
+      id: 'exif_viewer',
+      name: 'EXIF Viewer',
+      description: 'Inspect EXIF metadata and strip (read-only placeholder).',
+      icon: HugeIcons.strokeRoundedImage01,
+      category: ToolCategory.file,
+      screenBuilder: () => const ExifScreen(),
+      keywords: ['exif', 'metadata', 'image', 'privacy'],
     ),
   ];
 
