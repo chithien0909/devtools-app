@@ -23,6 +23,8 @@ A modern, open-source, and cross-platform suite of developer utilities built wit
 - URL Builder — Parse and build URLs, query params, fragments.
 - Slugifier — Create URL-safe slugs; normalize whitespace.
 - Color Tools — HEX/RGB/HSL convert; palette from image.
+- Image Format Converter — PNG ⇄ JPG with quality.
+- EXIF Viewer — Read image metadata (strip: placeholder).
 
 ## 🚀 Getting Started
 
