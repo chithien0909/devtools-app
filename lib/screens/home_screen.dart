@@ -1,4 +1,5 @@
 import 'package:devtools_plus/core/widgets/glass_sidebar.dart';
+import 'package:devtools_plus/core/widgets/keyboard_shortcuts.dart';
 import 'package:devtools_plus/models/tool_model.dart';
 import 'package:devtools_plus/providers/tool_provider.dart';
 import 'package:devtools_plus/screens/dashboard_screen.dart';
@@ -18,7 +19,9 @@ const List<List<dynamic>> _copyIcon = HugeIcons.strokeRoundedCopy01;
 const List<List<dynamic>> _emptyStateIcon = HugeIcons.strokeRoundedGrid;
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  final String? initialToolId;
+  
+  const HomeScreen({super.key, this.initialToolId});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -78,34 +81,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Responsive spacing based on screen size
     final spacing = screenWidth < 1200 ? 12.0 : 18.0;
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: Stack(
-        children: [
-          const _AuroraBackground(),
-          SafeArea(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const GlassSidebar(),
-                SizedBox(width: spacing),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: switch (section) {
-                      AppSection.dashboard => _buildDashboardStack(theme),
-                      AppSection.settings => const _SettingsView(),
-                      AppSection.about => const _AboutView(),
-                    },
+    return KeyboardShortcuts(
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        body: Stack(
+          children: [
+            const _AuroraBackground(),
+            SafeArea(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const GlassSidebar(),
+                  SizedBox(width: spacing),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: switch (section) {
+                        AppSection.dashboard => _buildDashboardStack(theme),
+                        AppSection.settings => const _SettingsView(),
+                        AppSection.about => const _AboutView(),
+                      },
+                    ),
                   ),
-                ),
-                SizedBox(width: spacing),
-              ],
+                  SizedBox(width: spacing),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

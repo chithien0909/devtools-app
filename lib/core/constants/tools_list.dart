@@ -2,13 +2,17 @@ import 'dart:io' show Platform;
 
 import 'package:devtools_plus/models/tool_model.dart';
 import 'package:devtools_plus/tools/base64/base64_screen.dart';
+import 'package:devtools_plus/tools/epoch_converter/epoch_screen.dart';
 import 'package:devtools_plus/tools/hash_generator/hash_screen.dart';
 import 'package:devtools_plus/tools/image_compressor/compressor_screen.dart';
 import 'package:devtools_plus/tools/json_formatter/json_screen.dart';
 import 'package:devtools_plus/tools/jwt_decoder/jwt_screen.dart';
 import 'package:devtools_plus/tools/pdf_generator/pdf_screen.dart';
 import 'package:devtools_plus/tools/qr_code/qr_screen.dart';
+import 'package:devtools_plus/tools/regex_tester/regex_screen.dart';
 import 'package:devtools_plus/tools/text_case_converter/text_case_screen.dart';
+import 'package:devtools_plus/tools/url_encoder/url_screen.dart';
+import 'package:devtools_plus/tools/uuid_generator/uuid_screen.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 final List<ToolModel> tools = [
@@ -76,5 +80,37 @@ final List<ToolModel> tools = [
     icon: HugeIcons.strokeRoundedQrCode,
     category: ToolCategory.utility,
     screen: QrCodeScreen(),
+  ),
+  const ToolModel(
+    id: 'uuid_generator',
+    name: 'UUID Generator',
+    description: 'Generate unique identifiers (v1, v4, v7) in bulk.',
+    icon: HugeIcons.strokeRoundedFingerPrintScan,
+    category: ToolCategory.utility,
+    screen: UuidGeneratorScreen(),
+  ),
+  const ToolModel(
+    id: 'epoch_converter',
+    name: 'Epoch/Time Converter',
+    description: 'Convert between UNIX timestamps and ISO 8601 formats.',
+    icon: HugeIcons.strokeRoundedClock01,
+    category: ToolCategory.utility,
+    screen: EpochConverterScreen(),
+  ),
+  const ToolModel(
+    id: 'url_encoder',
+    name: 'URL Encoder/Decoder',
+    description: 'Encode and decode URLs, query strings, and components.',
+    icon: HugeIcons.strokeRoundedLink01,
+    category: ToolCategory.data,
+    screen: UrlEncoderScreen(),
+  ),
+  const ToolModel(
+    id: 'regex_tester',
+    name: 'Regex Tester',
+    description: 'Test regular expressions with live matches and groups.',
+    icon: HugeIcons.strokeRoundedSearch01,
+    category: ToolCategory.utility,
+    screen: RegexTesterScreen(),
   ),
 ];
