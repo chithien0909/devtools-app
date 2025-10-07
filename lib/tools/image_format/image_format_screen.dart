@@ -18,30 +18,41 @@ class _ImageFormatScreenState extends State<ImageFormatScreen> {
   String _status = '';
 
   Future<void> _pickAndConvert() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false);
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
     if (res == null) return;
     final Uint8List? bytes = res.files.single.bytes;
     if (bytes == null) return;
     try {
       final out = await _service.convert(bytes, _target, quality: _quality);
-      setState(() => _status = 'Converted (size: ' + out.lengthInBytes.toString() + ' bytes)');
-      await FilePicker.platform.saveFile(fileName: _fileNameForTarget(res.files.single.name), bytes: out);
+      setState(
+        () => _status =
+            'Converted (size: ' + out.lengthInBytes.toString() + ' bytes)',
+      );
+      await FilePicker.platform.saveFile(
+        fileName: _fileNameForTarget(res.files.single.name),
+        bytes: out,
+      );
     } catch (e) {
       _show(e.toString());
     }
   }
 
   String _fileNameForTarget(String name) {
-    final base = name.contains('.') ? name.substring(0, name.lastIndexOf('.')) : name;
+    final base = name.contains('.')
+        ? name.substring(0, name.lastIndexOf('.'))
+        : name;
     final ext = switch (_target) {
       ImageTargetFormat.png => '.png',
       ImageTargetFormat.jpg => '.jpg',
-      ImageTargetFormat.webp => '.webp',
     };
     return base + ext;
   }
 
-  void _show(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  void _show(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
@@ -53,19 +64,37 @@ class _ImageFormatScreenState extends State<ImageFormatScreen> {
             child: DropdownButton<ImageTargetFormat>(
               value: _target,
               items: const [
-                DropdownMenuItem(value: ImageTargetFormat.png, child: Text('PNG')),
-                DropdownMenuItem(value: ImageTargetFormat.jpg, child: Text('JPG')),
-                DropdownMenuItem(value: ImageTargetFormat.webp, child: Text('WebP')),
+                DropdownMenuItem(
+                  value: ImageTargetFormat.png,
+                  child: Text('PNG'),
+                ),
+                DropdownMenuItem(
+                  value: ImageTargetFormat.jpg,
+                  child: Text('JPG'),
+                ),
               ],
-              onChanged: (v) => setState(() => _target = v ?? ImageTargetFormat.png),
+              onChanged: (v) =>
+                  setState(() => _target = v ?? ImageTargetFormat.png),
             ),
           ),
           if (_target != ImageTargetFormat.png)
-            Row(children: [
-              const Text('Quality'),
-              Slider(value: _quality.toDouble(), min: 1, max: 100, divisions: 99, label: _quality.toString(), onChanged: (v) => setState(() => _quality = v.round())),
-            ]),
-          IconButton(onPressed: _pickAndConvert, icon: const Icon(Icons.file_open)),
+            Row(
+              children: [
+                const Text('Quality'),
+                Slider(
+                  value: _quality.toDouble(),
+                  min: 1,
+                  max: 100,
+                  divisions: 99,
+                  label: _quality.toString(),
+                  onChanged: (v) => setState(() => _quality = v.round()),
+                ),
+              ],
+            ),
+          IconButton(
+            onPressed: _pickAndConvert,
+            icon: const Icon(Icons.file_open),
+          ),
         ],
       ),
       body: Center(child: Text(_status)),

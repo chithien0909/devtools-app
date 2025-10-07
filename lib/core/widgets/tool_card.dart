@@ -30,7 +30,9 @@ class _ToolCardState extends State<ToolCard> {
     final category = widget.tool.category;
     final accent = category.accentGradient;
 
-    final glowColor = accent.colors.last.withValues(alpha: _isHovered ? 0.5 : 0.25);
+    final glowColor = accent.colors.last.withValues(
+      alpha: _isHovered ? 0.5 : 0.25,
+    );
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -62,8 +64,8 @@ class _ToolCardState extends State<ToolCard> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(28),
                 border: Border.all(
-                  color: accent.colors.last.withValues(alpha: 
-                    _isHovered ? 0.45 : 0.18,
+                  color: accent.colors.last.withValues(
+                    alpha: _isHovered ? 0.45 : 0.18,
                   ),
                   width: 1.2,
                 ),
@@ -103,15 +105,15 @@ class _ToolCardState extends State<ToolCard> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 12),
-                        Expanded(
-                          child: Text(
-                            widget.tool.description,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(alpha: 
-                                0.72,
-                              ),
-                              height: 1.4,
+                        Text(
+                          widget.tool.description,
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.72,
                             ),
+                            height: 1.4,
                           ),
                         ),
                         const SizedBox(height: 16),

@@ -45,23 +45,23 @@
 ## Project TODO Backlog
 
 ### Media & File
-- Implement FFmpegService to run system ffmpeg safely
-- Build FFmpeg tool screen with presets and progress
-- Register FFmpeg tool in ToolRegistry with desktop gating
-- Design PDF Split & Merge service (split ranges, merge list)
-- Create PDF Split & Merge screen with page preview
-- Register PDF Split & Merge tool in ToolRegistry
-- Implement EXIF stripping via re-encode or writer lib
+- [x] Implement FFmpegService to run system ffmpeg safely
+- [x] Build FFmpeg tool screen with presets and progress
+- [x] Register FFmpeg tool in ToolRegistry with desktop gating
+- [x] Design PDF Split & Merge service (split ranges, merge list)
+- [x] Create PDF Split & Merge screen with page preview
+- [x] Register PDF Split & Merge tool in ToolRegistry
+- [x] Implement EXIF stripping via re-encode or writer lib
 
 ### Platform & Registry
-- Add app-wide platform gating in `ToolRegistry._isPlatformSupported`
-- Register Image Compressor with platform gating (Windows off)
+- [x] Add app-wide platform gating in `ToolRegistry._isPlatformSupported`
+- [x] Register Image Compressor with platform gating (Windows off)
 
 ### Tools Enhancements
-- Enhance Color Tools to compute palette reliably
-- Add URL Builder validation and share/copy helpers
-- Add Text Diff intra-line highlights for changed parts
+- [x] Enhance Color Tools to compute palette reliably
+- [x] Add URL Builder validation and share/copy helpers
+- [x] Add Text Diff intra-line highlights for changed parts
 
 ### Documentation
-- Document FFmpeg install and PATH setup in README
-- Update README Features with new media tools
+- [x] Document FFmpeg install and PATH setup in README
+- [x] Update README Features with new media tools

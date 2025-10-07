@@ -21,6 +21,10 @@ import 'package:devtools_plus/tools/slug/slug_screen.dart';
 import 'package:devtools_plus/tools/color_tools/color_screen.dart';
 import 'package:devtools_plus/tools/image_format/image_format_screen.dart';
 import 'package:devtools_plus/tools/exif/exif_screen.dart';
+import 'package:devtools_plus/tools/pdf_split_merge/pdf_split_merge_screen.dart';
+import 'package:devtools_plus/tools/whisper/whisper_screen.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:hugeicons/hugeicons.dart';
 
 class ToolRegistry {
@@ -51,6 +55,15 @@ class ToolRegistry {
       category: ToolCategory.file,
       screenBuilder: () => const PdfGeneratorScreen(),
       keywords: ['pdf', 'generate', 'image', 'document'],
+    ),
+    ToolDefinition(
+      id: 'pdf_split_merge',
+      name: 'PDF Split & Merge',
+      description: 'Split PDFs into ranges or merge multiple documents.',
+      icon: HugeIcons.strokeRoundedPdf02,
+      category: ToolCategory.file,
+      screenBuilder: () => const PdfSplitMergeScreen(),
+      keywords: ['pdf', 'split', 'merge', 'pages', 'document'],
     ),
     ToolDefinition(
       id: 'jwt_decoder',
@@ -123,7 +136,8 @@ class ToolRegistry {
       category: ToolCategory.utility,
       screenBuilder: () => const RegexTesterScreen(),
       keywords: ['regex', 'regexp', 'pattern', 'match', 'test', 'search'],
-    ),    ToolDefinition(
+    ),
+    ToolDefinition(
       id: 'yaml_json',
       name: 'YAML ⇄ JSON',
       description: 'Convert YAML and JSON with validation.',
@@ -131,7 +145,8 @@ class ToolRegistry {
       category: ToolCategory.data,
       screenBuilder: () => const YamlJsonScreen(),
       keywords: ['yaml', 'json', 'convert', 'format', 'serialize'],
-    ),    ToolDefinition(
+    ),
+    ToolDefinition(
       id: 'csv_converter',
       name: 'CSV ⇄ JSON / TSV',
       description: 'Convert CSV/TSV and JSON with headers handling.',
@@ -206,19 +221,57 @@ class ToolRegistry {
     ToolDefinition(
       id: 'exif_viewer',
       name: 'EXIF Viewer',
-      description: 'Inspect EXIF metadata and strip (read-only placeholder).',
+      description: 'Inspect and strip EXIF metadata from images.',
       icon: HugeIcons.strokeRoundedImage01,
       category: ToolCategory.file,
       screenBuilder: () => const ExifScreen(),
       keywords: ['exif', 'metadata', 'image', 'privacy'],
     ),
+    ToolDefinition(
+      id: 'whisper_transcription',
+      name: 'Video Transcription',
+      description: 'Transcribe videos using OpenAI Whisper (local model).',
+      icon: HugeIcons.strokeRoundedVideo01,
+      category: ToolCategory.file,
+      screenBuilder: () => const WhisperScreen(),
+      keywords: ['whisper', 'transcription', 'video', 'audio', 'speech', 'ai'],
+    ),
   ];
 
-  static List<ToolDefinition> get all => 
+  static const Set<TargetPlatform> _desktopPlatforms = {
+    TargetPlatform.windows,
+    TargetPlatform.linux,
+    TargetPlatform.macOS,
+  };
+
+  static final Map<String, Set<TargetPlatform>> _toolPlatformAllowList = {
+    'ffmpeg_transcoder': _desktopPlatforms,
+    'pdf_split_merge': _desktopPlatforms,
+    'image_format': {TargetPlatform.macOS, TargetPlatform.linux},
+    'exif_viewer': _desktopPlatforms,
+    'whisper_transcription': _desktopPlatforms,
+  };
+
+  static const Set<String> _webExcludedTools = {
+    'ffmpeg_transcoder',
+    'pdf_split_merge',
+    'image_format',
+    'exif_viewer',
+    'whisper_transcription',
+  };
+
+  static List<ToolDefinition> get all =>
       _definitions.where((def) => _isPlatformSupported(def)).toList();
 
   static bool _isPlatformSupported(ToolDefinition def) {
-    return true;
+    if (kIsWeb && _webExcludedTools.contains(def.id)) {
+      return false;
+    }
+    final allowList = _toolPlatformAllowList[def.id];
+    if (allowList == null) {
+      return true;
+    }
+    return allowList.contains(defaultTargetPlatform);
   }
 
   static ToolDefinition? findById(String id) {

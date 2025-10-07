@@ -6,6 +6,7 @@ import 'package:devtools_plus/providers/tool_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key, required this.onToolSelected});
@@ -59,17 +60,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final columns = _resolveColumnCount(constraints.maxWidth);
-                return GridView.builder(
+                return MasonryGridView.builder(
                   padding: EdgeInsets.zero,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverSimpleGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: columns,
-                    mainAxisSpacing: 20,
-                    crossAxisSpacing: 20,
-                    childAspectRatio: 1,
                   ),
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 20,
                   itemCount: tools.length,
                   itemBuilder: (context, index) {
                     final tool = tools[index];
+                    // Variable height by varying description length/child content naturally
                     return ToolCard(
                       tool: tool,
                       onTap: () => widget.onToolSelected(tool),
@@ -178,16 +179,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   int _resolveColumnCount(double width) {
-    if (width < 640) {
+    if (width < 480) {
       return 2;
-    } else if (width < 960) {
+    }
+    if (width < 560) {
       return 3;
-    } else if (width < 1280) {
+    }
+    if (width < 880) {
       return 4;
-    } else if (width < 1600) {
+    }
+    if (width < 1200) {
       return 5;
     }
-    return 6;
+    if (width < 1536) {
+      return 6;
+    }
+    if (width < 1920) {
+      return 7;
+    }
+    return 8;
   }
 }
 
@@ -203,14 +213,14 @@ class _CategoryFilterRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final categories =
         <({String label, List<List<dynamic>> icon, ToolCategory? category})>[
-      (label: 'All', icon: _allIcon, category: null),
-      for (final category in ToolCategory.values)
-        (
-          label: category.label,
-          icon: category.iconData,
-          category: category,
-        ),
-    ];
+          (label: 'All', icon: _allIcon, category: null),
+          for (final category in ToolCategory.values)
+            (
+              label: category.label,
+              icon: category.iconData,
+              category: category,
+            ),
+        ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -222,7 +232,8 @@ class _CategoryFilterRow extends ConsumerWidget {
               label: item.label,
               icon: item.icon,
               isActive: item.category == activeCategory,
-              gradient: item.category?.accentGradient ??
+              gradient:
+                  item.category?.accentGradient ??
                   LinearGradient(
                     colors: [
                       theme.colorScheme.primary.withValues(alpha: 0.7),

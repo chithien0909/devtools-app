@@ -1,16 +1,12 @@
-import 'package:devtools_plus/core/widgets/glass_sidebar.dart';
 import 'package:devtools_plus/core/widgets/keyboard_shortcuts.dart';
 import 'package:devtools_plus/models/tool_model.dart';
 import 'package:devtools_plus/providers/tool_provider.dart';
 import 'package:devtools_plus/screens/dashboard_screen.dart';
-import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:liquid_swipe/liquid_swipe.dart';
+import 'dart:ui';
 
-const List<List<dynamic>> _slideIcon = HugeIcons.strokeRoundedArrowRight02;
 const List<List<dynamic>> _backIcon = HugeIcons.strokeRoundedArrowLeft02;
 const List<List<dynamic>> _flashIcon = HugeIcons.strokeRoundedFlash;
 const List<List<dynamic>> _shareIcon = HugeIcons.strokeRoundedShare01;
@@ -20,7 +16,7 @@ const List<List<dynamic>> _emptyStateIcon = HugeIcons.strokeRoundedGrid;
 
 class HomeScreen extends ConsumerStatefulWidget {
   final String? initialToolId;
-  
+
   const HomeScreen({super.key, this.initialToolId});
 
   @override
@@ -28,48 +24,30 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  late final LiquidController _liquidController;
-  late final PageController _pageController;
-  int _currentLiquidPage = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _liquidController = LiquidController();
-    _pageController = PageController(initialPage: 0);
-  }
-
   void _handleToolSelected(ToolModel tool) {
     ref.read(activeToolProvider.notifier).state = tool;
-    final isDesktop =
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux ||
-        defaultTargetPlatform == TargetPlatform.macOS;
-    if (isDesktop) {
-      _pageController.animateToPage(
-        1,
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.easeOut,
-      );
-    } else {
-      _liquidController.animateToPage(page: 1, duration: 700);
-    }
-  }
-
-  void _backToDashboard() {
-    final isDesktop =
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux ||
-        defaultTargetPlatform == TargetPlatform.macOS;
-    if (isDesktop) {
-      _pageController.animateToPage(
-        0,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeOut,
-      );
-    } else {
-      _liquidController.animateToPage(page: 0, duration: 600);
-    }
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 420),
+        reverseTransitionDuration: const Duration(milliseconds: 320),
+        pageBuilder: (_, animation, secondaryAnimation) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.985, end: 1).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
+              child: ToolDetailView(
+                onBack: () => Navigator.of(context).maybePop(),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -81,9 +59,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Responsive spacing based on screen size
     final spacing = screenWidth < 1200 ? 12.0 : 18.0;
 
+    final isWide = screenWidth >= 1000;
+
     return KeyboardShortcuts(
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
+        drawer: isWide
+            ? null
+            : _BlurDrawer(
+                onSelectSection: (s) =>
+                    ref.read(appSectionProvider.notifier).state = s,
+              ),
         body: Stack(
           children: [
             const _AuroraBackground(),
@@ -91,8 +77,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const GlassSidebar(),
-                  SizedBox(width: spacing),
+                  if (isWide) _buildNavigationRail(theme, section),
+                  if (isWide) SizedBox(width: spacing),
                   Expanded(
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 400),
@@ -105,7 +91,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ),
                   ),
-                  SizedBox(width: spacing),
+                  if (isWide) SizedBox(width: spacing),
                 ],
               ),
             ),
@@ -136,48 +122,163 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildPager(ThemeData theme) {
-    final isDesktop =
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux ||
-        defaultTargetPlatform == TargetPlatform.macOS;
-    final pages = <Widget>[
-      DashboardScreen(onToolSelected: _handleToolSelected),
-      ToolDetailView(onBack: _backToDashboard),
-    ];
+    return DashboardScreen(onToolSelected: _handleToolSelected);
+  }
 
-    if (isDesktop) {
-      return PageView(
-        controller: _pageController,
-        physics: const ClampingScrollPhysics(),
-        onPageChanged: (page) {
-          setState(() => _currentLiquidPage = page);
-          if (page == 0) {
-            ref.read(activeToolProvider.notifier).state = null;
-          }
-        },
-        children: pages,
-      );
-    }
-
-    return LiquidSwipe(
-      pages: pages,
-      liquidController: _liquidController,
-      initialPage: _currentLiquidPage,
-      enableLoop: false,
-      waveType: WaveType.liquidReveal,
-      fullTransitionValue: 600,
-      slideIconWidget: const HugeIcon(
-        icon: _slideIcon,
-        color: Colors.white,
-        size: 22,
-      ),
-      positionSlideIcon: 0.4,
-      onPageChangeCallback: (page) {
-        setState(() => _currentLiquidPage = page);
-        if (page == 0) {
-          ref.read(activeToolProvider.notifier).state = null;
-        }
+  Widget _buildNavigationRail(ThemeData theme, AppSection section) {
+    return NavigationRail(
+      selectedIndex: switch (section) {
+        AppSection.dashboard => 0,
+        AppSection.settings => 1,
+        AppSection.about => 2,
       },
+      onDestinationSelected: (i) {
+        final next = switch (i) {
+          0 => AppSection.dashboard,
+          1 => AppSection.settings,
+          _ => AppSection.about,
+        };
+        ref.read(appSectionProvider.notifier).state = next;
+      },
+      labelType: NavigationRailLabelType.all,
+      leading: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Hero(
+          tag: 'app-badge',
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.primary.withValues(alpha: 0.75),
+                  theme.colorScheme.secondary.withValues(alpha: 0.65),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      destinations: const [
+        NavigationRailDestination(
+          icon: Icon(Icons.dashboard_outlined),
+          selectedIcon: Icon(Icons.dashboard),
+          label: Text('Dashboard'),
+        ),
+        NavigationRailDestination(
+          icon: Icon(Icons.settings_outlined),
+          selectedIcon: Icon(Icons.settings),
+          label: Text('Settings'),
+        ),
+        NavigationRailDestination(
+          icon: Icon(Icons.info_outline),
+          selectedIcon: Icon(Icons.info),
+          label: Text('About'),
+        ),
+      ],
+    );
+  }
+
+  Drawer _BlurDrawer({required void Function(AppSection) onSelectSection}) {
+    return Drawer(
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.75),
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.45),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border(
+                right: BorderSide(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.14),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                children: [
+                  Row(
+                    children: [
+                      Hero(
+                        tag: 'app-badge',
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.75),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.secondary.withValues(alpha: 0.65),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'DevTools+',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  ListTile(
+                    leading: const Icon(Icons.dashboard),
+                    title: const Text('Dashboard'),
+                    onTap: () {
+                      Navigator.of(context).maybePop();
+                      onSelectSection(AppSection.dashboard);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.settings),
+                    title: const Text('Settings'),
+                    onTap: () {
+                      Navigator.of(context).maybePop();
+                      onSelectSection(AppSection.settings);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.info),
+                    title: const Text('About'),
+                    onTap: () {
+                      Navigator.of(context).maybePop();
+                      onSelectSection(AppSection.about);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -227,14 +328,18 @@ class ToolDetailView extends ConsumerWidget {
           _DetailHeadline(tool: tool),
           const SizedBox(height: 28),
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _GlassSection(title: 'Workspace', child: tool.screen),
-                const SizedBox(height: 24),
-                _GlassSection(
-                  title: 'Output Preview',
-                  child: _OutputPlaceholder(tool: tool),
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _GlassSection(
+                    title: 'Output Preview',
+                    child: _OutputPlaceholder(tool: tool),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _GlassSection(title: 'Workspace', child: tool.screen),
                 ),
               ],
             ),
