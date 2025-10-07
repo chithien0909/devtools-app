@@ -23,6 +23,7 @@ import 'package:devtools_plus/tools/image_format/image_format_screen.dart';
 import 'package:devtools_plus/tools/exif/exif_screen.dart';
 import 'package:devtools_plus/tools/pdf_split_merge/pdf_split_merge_screen.dart';
 import 'package:devtools_plus/tools/whisper/whisper_screen.dart';
+import 'package:devtools_plus/screens/youtube_downloader_screen.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:hugeicons/hugeicons.dart';
@@ -236,6 +237,15 @@ class ToolRegistry {
       screenBuilder: () => const WhisperScreen(),
       keywords: ['whisper', 'transcription', 'video', 'audio', 'speech', 'ai'],
     ),
+    ToolDefinition(
+      id: 'youtube_downloader',
+      name: 'YouTube Downloader',
+      description: 'Download YouTube videos and audio with yt-dlp integration.',
+      icon: HugeIcons.strokeRoundedVideo01,
+      category: ToolCategory.utility,
+      screenBuilder: () => const YouTubeDownloaderScreen(),
+      keywords: ['youtube', 'download', 'video', 'audio', 'mp4', 'mp3', 'yt-dlp'],
+    ),
   ];
 
   static const Set<TargetPlatform> _desktopPlatforms = {
@@ -250,6 +260,7 @@ class ToolRegistry {
     'image_format': {TargetPlatform.macOS, TargetPlatform.linux},
     'exif_viewer': _desktopPlatforms,
     'whisper_transcription': _desktopPlatforms,
+    'youtube_downloader': _desktopPlatforms,
   };
 
   static const Set<String> _webExcludedTools = {
@@ -260,8 +271,12 @@ class ToolRegistry {
     'whisper_transcription',
   };
 
+  static const Set<String> _temporarilyDisabledTools = {
+    'whisper_transcription', // Temporarily disabled due to layout issues
+  };
+
   static List<ToolDefinition> get all =>
-      _definitions.where((def) => _isPlatformSupported(def)).toList();
+      _definitions.where((def) => _isPlatformSupported(def) && !_temporarilyDisabledTools.contains(def.id)).toList();
 
   static bool _isPlatformSupported(ToolDefinition def) {
     if (kIsWeb && _webExcludedTools.contains(def.id)) {

@@ -37,26 +37,23 @@ class GlassSidebar extends ConsumerWidget {
         vertical: 24,
         horizontal: isCollapsed ? 8 : 16,
       ),
-      child: GlassmorphicContainer(
+      child: Container(
         width: double.infinity,
         height: double.infinity,
-        borderRadius: 28,
-        blur: 18,
-        border: 0,
-        alignment: Alignment.topCenter,
-        linearGradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.surface.withValues(alpha: 0.08),
-            theme.colorScheme.surface.withValues(alpha: 0.18),
-          ],
-        ),
-        borderGradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary.withValues(alpha: 0.12),
-            theme.colorScheme.primary.withValues(alpha: 0.05),
-          ],
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.surface.withValues(alpha: 0.08),
+              theme.colorScheme.surface.withValues(alpha: 0.18),
+            ],
+          ),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+            width: 1,
+          ),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
@@ -115,9 +112,7 @@ class _SidebarHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Hero(
-      tag: 'app-badge',
-      child: Container(
+    return Container(
         width: 44,
         height: 44,
         decoration: BoxDecoration(
@@ -143,7 +138,6 @@ class _SidebarHeader extends StatelessWidget {
           color: Colors.white,
           size: 24,
         ),
-      ),
     );
   }
 }

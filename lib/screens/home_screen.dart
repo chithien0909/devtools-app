@@ -526,6 +526,7 @@ class _GlassSection extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -535,7 +536,7 @@ class _GlassSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              child,
+              Flexible(child: child),
             ],
           ),
         ),

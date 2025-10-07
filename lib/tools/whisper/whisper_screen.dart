@@ -35,32 +35,40 @@ class _WhisperScreenState extends ConsumerState<WhisperScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _AvailabilityBanner(state: state),
-            const SizedBox(height: 24),
-            _FileSelectionSection(state: state, controller: controller),
-            const SizedBox(height: 24),
-            _ModelSelectionSection(state: state, controller: controller),
-            const SizedBox(height: 24),
-            _OptionsSection(state: state, controller: controller),
-            const SizedBox(height: 24),
-            _ControlButtons(state: state, controller: controller),
-            if (state.progress != null) ...[
-              const SizedBox(height: 16),
-              _ProgressSection(progress: state.progress!, startedAt: state.startedAt),
-            ],
-            if (state.stats != null) ...[
-              const SizedBox(height: 16),
-              _StatsSection(stats: state.stats!),
-            ],
-            if (state.errorMessage != null) ...[
-              const SizedBox(height: 16),
-              _ErrorSection(error: state.errorMessage!),
-            ],
-            const SizedBox(height: 16),
-            Expanded(child: _ResultsSection(results: state.results)),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _AvailabilityBanner(state: state),
+                  const SizedBox(height: 24),
+                  _FileSelectionSection(state: state, controller: controller),
+                  const SizedBox(height: 24),
+                  _ModelSelectionSection(state: state, controller: controller),
+                  const SizedBox(height: 24),
+                  _OptionsSection(state: state, controller: controller),
+                  const SizedBox(height: 24),
+                  _ControlButtons(state: state, controller: controller),
+                  if (state.progress != null) ...[
+                    const SizedBox(height: 16),
+                    _ProgressSection(progress: state.progress!, startedAt: state.startedAt),
+                  ],
+                  if (state.stats != null) ...[
+                    const SizedBox(height: 16),
+                    _StatsSection(stats: state.stats!),
+                  ],
+                  if (state.errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    _ErrorSection(error: state.errorMessage!),
+                  ],
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+            SliverFillRemaining(
+              child: _ResultsSection(results: state.results),
+            ),
           ],
         ),
       ),
@@ -615,6 +623,7 @@ class _StatsSection extends StatelessWidget {
       ),
     );
   }
+}
 
 class WhisperFormatters {
   static String duration(Duration duration) {
